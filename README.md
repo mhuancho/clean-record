@@ -16,13 +16,13 @@ Aplicación Angular 19 que permite grabar la pantalla con audio del sistema y mi
 
   src/
 ├── app/
-│ ├── screen-recorder/ # Componente principal
+│ ├── screen-recorder/
 │ ├── services/
 │ │ ├── screen-recorder-controller.service.ts
 │ │ ├── screen-recorder.service.ts
 │ │ └── notification.service.ts
 │ ├── shared/
-│ │ └── notification/ # Componente visual para alertas
+│ │ └── notification/
 │ └── interceptors/
 │ └── global-error.interceptor.ts
 
