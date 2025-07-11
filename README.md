@@ -1,59 +1,49 @@
-# CleanRecord
+# 🎥 Clean Record - Grabador de pantalla en Angular 19
+Aplicación Angular 19 que permite grabar la pantalla con audio del sistema y micrófono, generar un video `.webm`, mostrar vista previa, descargar automáticamente, y recibir notificaciones amigables. Ideal para generar demos, clases virtuales o reportes técnicos.
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 19.2.14.
+## 🚀 Características
 
-## Development server
+- 🧼 Arquitectura limpia y desacoplada (servicios, controladores, componentes standalone)
+- ✅ Countdown antes de iniciar grabación
+- 🎙️ Captura audio de sistema + micrófono con `AudioContext`
+- 📽️ Descarga automática del video grabado (`MediaRecorder`)
+- 👀 Vista previa integrada post grabación
+- 🛠️ Notificaciones personalizadas (`NotificationService`)
+- ⚙️ Selector de calidad (720p / 1080p)
+- ♻️ Grabación reactiva (`BehaviorSubject`) y `ChangeDetectionStrategy.OnPush`
+  
+- ## 📦 Estructura
 
-To start a local development server, run:
+  src/
+├── app/
+│ ├── screen-recorder/ # Componente principal
+│ ├── services/
+│ │ ├── screen-recorder-controller.service.ts
+│ │ ├── screen-recorder.service.ts
+│ │ └── notification.service.ts
+│ ├── shared/
+│ │ └── notification/ # Componente visual para alertas
+│ └── interceptors/
+│ └── global-error.interceptor.ts
 
-```bash
-ng serve
-```
+📄 Buenas prácticas aplicadas
+✅ Componentes standalone en Angular 19
+✅ Separación de responsabilidades (ControllerService, UI, RecorderService)
+✅ Interceptor global de errores HTTP (GlobalErrorInterceptor)
+✅ Tipado fuerte con TypeScript (AppNotification, NotificationType)
+✅ Evita uso excesivo de NgZone/detectChanges() innecesario
+✅ Animaciones y estilos limpios con Tailwind CSS
+✅ Uso de Renderer2 para manipular DOM de forma segura
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+💻 Tecnologías
+Angular 19
+RxJS
+TypeScript
+TailwindCSS
+MediaRecorder API
+AudioContext API
 
-## Code scaffolding
+📷 Demo https://clean-record.netlify.app/
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+🧑‍💼 Autor
+Mateo Huancho — LinkedIn www.linkedin.com/in/mhuancho08
