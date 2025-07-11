@@ -1,0 +1,114 @@
+<div class="max-w-3xl mx-auto p-6 space-y-6 relative">
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <div *ngIf="!(showWatchButton$ | async)">
+
+    <!-- CONTROLES Y SELECTOR EN UNA FILA -->
+    <div class="flex flex-wrap justify-between items-center gap-4">
+      <!-- Botones -->
+      <div class="flex flex-wrap gap-3">
+        <button
+          title="Iniciar grabación"
+          (click)="startRecording()"
+          [disabled]="(isRecording$ | async) || (isCountingDown$ | async)"
+          class="px-4 py-2 text-sm rounded-md font-medium text-green-700 hover:bg-green-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
+        >
+          🎥 Iniciar
+        </button>
+
+        <button
+          title="Pausar grabación"
+          *ngIf="(isRecording$ | async) && !(isPaused$ | async)"
+          (click)="pauseRecording()"
+          class="px-4 py-2 text-sm rounded-md font-medium text-yellow-600 hover:bg-yellow-100 transition"
+        >
+          ⏸ Pausar
+        </button>
+
+        <button
+          title="Reanudar grabación"
+          *ngIf="(isRecording$ | async) && (isPaused$ | async)"
+          (click)="resumeRecording()"
+          class="px-4 py-2 text-sm rounded-md font-medium text-blue-600 hover:bg-blue-100 transition"
+        >
+          ▶️ Reanudar
+        </button>
+
+        <button
+          title="Detener y guardar grabación"
+          *ngIf="(isRecording$ | async)"
+          (click)="stopRecording()"
+          class="px-4 py-2 text-sm rounded-md font-medium text-red-600 hover:bg-red-100 transition"
+        >
+          ⏹ Detener
+        </button>
+      </div>
+
+      <!-- Selector de calidad -->
+      <div class="flex items-center gap-2 text-sm">
+        <label for="quality" class="text-gray-600">Calidad:</label>
+        <select
+          id="quality"
+          [(ngModel)]="selectedQuality"
+          class="px-2 py-1 border rounded-md shadow-sm focus:ring focus:ring-indigo-200"
+        >
+          <option value="1080p">1080p (HD)</option>
+          <option value="720p">720p</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- CUENTA REGRESIVA -->
+    <div *ngIf="isCountingDown$ | async" class="text-center text-5xl font-bold text-gray-700 mt-4 animate-pulse">
+      {{ countdown$ | async }}
+    </div>
+
+    <!-- INDICADOR DE GRABACIÓN -->
+    <div *ngIf="isRecording$ | async" class="text-center text-red-600 font-semibold text-lg flex items-center justify-center gap-2">
+      <span class="w-3 h-3 rounded-full bg-red-600 animate-pulse"></span>
+      Grabando... {{ recordingTime$ | async }}
+    </div>
+
+    <!-- VISTA EN TIEMPO REAL -->
+    <video
+      id="preview"
+      class="w-full border rounded-md"
+      autoplay
+      muted
+      playsinline
+      height="360"
+    ></video>
+  </div>
+
+  <!-- BOTÓN "VER VIDEO" -->
+  <div *ngIf="(showWatchButton$ | async) && !(showFinalVideo$ | async)" class="text-center mt-10">
+    <button
+      (click)="onShowFinalVideo()"
+      class="px-6 py-3 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition"
+    >
+      ▶️ Ver grabación
+    </button>
+  </div>
+
+  <!-- VISTA PREVIA FINAL -->
+  <div *ngIf="(showFinalVideo$ | async) && (previewUrl$ | async)" class="mt-6 w-full p-4 rounded-md bg-white shadow border border-gray-200">
+    <h2 class="text-lg font-semibold text-gray-700 mb-3">🎬 Vista previa de la grabación</h2>
+
+    <video
+      [src]="previewUrl$ | async"
+      controls
+      autoplay
+      class="w-full rounded-md border border-gray-300"
+    ></video>
+
+    <div class="mt-4 text-right">
+      <button
+        title="Comenzar nueva grabación"
+        (click)="reset()"
+        class="px-4 py-2 text-sm rounded-md font-medium text-gray-600 hover:bg-gray-100 transition"
+      >
+        🔄 Nueva Grabación
+      </button>
+    </div>
+  </div>
+</div>
