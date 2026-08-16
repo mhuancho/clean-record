@@ -9,11 +9,7 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test",
-    "desktop:build": "ng build --configuration production --base-href ./",
-    "desktop": "npm run desktop:build && electron .",
-    "desktop:package": "npm run desktop:build && electron-builder --win",
-    "desktop:package:dir": "npm run desktop:build && electron-builder --win --dir"
+    "test": "ng test"
   },
   "private": true,
   "dependencies": {
