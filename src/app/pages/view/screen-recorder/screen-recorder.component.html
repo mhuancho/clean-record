@@ -3,7 +3,7 @@
 
   <header class="relative z-10 border-b border-slate-200/80 bg-white/75 backdrop-blur-xl">
     <div class="mx-auto flex max-w-7xl items-center justify-between px-5 py-3 sm:px-8">
-      <a class="flex items-center gap-3" href="/" aria-label="Ir al inicio de CleanRecord">
+      <a class="flex items-center gap-3" href="./" aria-label="Ir al inicio de CleanRecord">
         <span class="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-700 text-white shadow-lg shadow-indigo-500/20">
           <svg aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="none">
             <rect x="3" y="5" width="13" height="14" rx="4" stroke="currentColor" stroke-width="2"/>
@@ -12,7 +12,7 @@
         </span>
         <span>
           <span class="block text-base font-bold tracking-tight">CleanRecord</span>
-          <span class="block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Screen studio</span>
+          <span class="block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Estudio de captura</span>
         </span>
       </a>
 
@@ -24,15 +24,17 @@
   </header>
 
   <div class="relative z-10 mx-auto max-w-7xl px-5 pb-10 pt-5 sm:px-8 sm:pt-6">
-    <section aria-labelledby="recorder-title" class="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
-      <div>
-        <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600">Estudio de captura</p>
-        <h1 id="recorder-title" class="mt-1 text-2xl font-black text-slate-950 sm:text-3xl">Grabador de pantalla</h1>
-      </div>
-      <p class="max-w-xl text-sm leading-5 text-slate-500 sm:text-right">
-        Configura el audio, inicia la captura y descarga el resultado. Todo se procesa en este dispositivo.
-      </p>
-    </section>
+    @if (!(isRecording$ | async) && !(isPreparing$ | async) && !(isCountingDown$ | async) && !(showFinalVideo$ | async)) {
+      <section aria-labelledby="recorder-title" class="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600">Estudio de captura</p>
+          <h1 id="recorder-title" class="mt-1 text-2xl font-black text-slate-950 sm:text-3xl">Grabador de pantalla</h1>
+        </div>
+        <p class="max-w-xl text-sm leading-5 text-slate-500 sm:text-right">
+          Configura, verifica el audio y captura. El contenido nunca sale de tu dispositivo.
+        </p>
+      </section>
+    }
 
     @if (!isBrowserSupported) {
       <div role="alert" class="mx-auto mb-6 flex max-w-4xl items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
@@ -43,8 +45,10 @@
       </div>
     }
 
-    <div class="grid items-start gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
-      <aside class="order-2 rounded-3xl border border-white/90 bg-white/90 p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur lg:order-1 lg:sticky lg:top-6">
+    <div class="grid items-start gap-6"
+      [ngClass]="((isRecording$ | async) || (isPreparing$ | async) || (isCountingDown$ | async) || (showFinalVideo$ | async)) ? 'lg:grid-cols-1' : 'lg:grid-cols-[300px_minmax(0,1fr)]'">
+      @if (!(isRecording$ | async) && !(isPreparing$ | async) && !(isCountingDown$ | async) && !(showFinalVideo$ | async)) {
+      <aside class="min-w-0 order-2 rounded-3xl border border-white/90 bg-white/90 p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur lg:order-1 lg:sticky lg:top-6">
         <div class="mb-6 flex items-center justify-between">
           <div>
             <p class="text-xs font-bold uppercase tracking-[0.16em] text-indigo-600">Configuración</p>
@@ -76,7 +80,7 @@
           </div>
         }
 
-        <fieldset [disabled]="(isRecording$ | async) || (isCountingDown$ | async)">
+        <fieldset class="min-w-0" [disabled]="(isRecording$ | async) || (isPreparing$ | async) || (isCountingDown$ | async)">
           <legend class="mb-3 text-sm font-bold text-slate-700">Calidad de video</legend>
           <div class="grid grid-cols-2 gap-2">
             <button type="button" (click)="selectedQuality = '720p'" [attr.aria-pressed]="selectedQuality === '720p'"
@@ -88,8 +92,8 @@
             <button type="button" (click)="selectedQuality = '1080p'" [attr.aria-pressed]="selectedQuality === '1080p'"
               class="rounded-xl border px-3 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-50"
               [ngClass]="selectedQuality === '1080p' ? 'border-indigo-500 bg-indigo-50 text-indigo-900 ring-2 ring-indigo-500/10' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'">
-              <span class="flex items-center gap-1.5 text-sm font-bold">1080p <span class="rounded bg-indigo-600 px-1.5 py-0.5 text-[8px] uppercase tracking-wider text-white">Pro</span></span>
-              <span class="mt-0.5 block text-[11px] opacity-70">Alta definición</span>
+              <span class="text-sm font-bold">1080p</span>
+              <span class="mt-0.5 block text-[11px] opacity-70">Detalle máximo</span>
             </button>
           </div>
 
@@ -108,7 +112,7 @@
                 <span class="block truncate text-[11px] text-slate-400">Tu voz durante la captura</span>
               </span>
               <input class="peer sr-only" type="checkbox" [ngModel]="includeMicrophone" (ngModelChange)="setMicrophone($event)" name="includeMicrophone">
-              <span aria-hidden="true" class="relative h-5 w-9 rounded-full bg-slate-200 transition peer-checked:bg-indigo-600 after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-4"></span>
+              <span aria-hidden="true" class="relative h-5 w-9 rounded-full bg-slate-200 transition peer-checked:bg-indigo-600 peer-focus-visible:ring-4 peer-focus-visible:ring-indigo-200 after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-4"></span>
             </label>
 
             <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-3 transition hover:bg-slate-50">
@@ -122,7 +126,7 @@
                 <span class="block truncate text-[11px] text-slate-400">Sonido de pestañas y apps</span>
               </span>
               <input class="peer sr-only" type="checkbox" [ngModel]="includeSystemAudio" (ngModelChange)="setSystemAudio($event)" name="includeSystemAudio">
-              <span aria-hidden="true" class="relative h-5 w-9 rounded-full bg-slate-200 transition peer-checked:bg-indigo-600 after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-4"></span>
+              <span aria-hidden="true" class="relative h-5 w-9 rounded-full bg-slate-200 transition peer-checked:bg-indigo-600 peer-focus-visible:ring-4 peer-focus-visible:ring-indigo-200 after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-4"></span>
             </label>
           </div>
           @if (includeMicrophone && includeSystemAudio) {
@@ -130,6 +134,22 @@
           } @else {
             <p class="mt-3 text-[11px] leading-4 text-slate-500">Puedes activar ambas fuentes para grabar simultáneamente tu voz y el audio del sistema.</p>
           }
+
+          <div class="mt-4 min-w-0 max-w-full rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <div class="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+              <div class="min-w-0">
+                <p class="truncate text-xs font-semibold text-slate-700" [title]="microphoneName">{{ microphoneName }}</p>
+                <p class="mt-0.5 text-[11px] text-slate-500">{{ isTestingMicrophone ? 'Habla para comprobar el nivel' : 'Verifica el micrófono antes de grabar' }}</p>
+              </div>
+              <button type="button" (click)="toggleMicrophoneTest()" [disabled]="!includeMicrophone"
+                class="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:opacity-40">
+                {{ isTestingMicrophone ? 'Detener' : 'Probar' }}
+              </button>
+            </div>
+            <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-200" role="progressbar" aria-label="Nivel del micrófono" aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="microphoneLevel">
+              <div class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-indigo-500 transition-[width] duration-100" [style.width.%]="microphoneLevel"></div>
+            </div>
+          </div>
         </fieldset>
 
         <div class="mt-5 flex gap-2.5 rounded-xl bg-slate-50 p-3 text-[11px] leading-4 text-slate-500">
@@ -139,8 +159,10 @@
           <span>El video permanece en tu dispositivo. Tú decides cuándo descargarlo.</span>
         </div>
       </aside>
+      }
 
-      <section class="order-1 overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.12)] lg:order-2">
+      <section class="order-1 overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.12)] lg:order-2"
+        [ngClass]="((isRecording$ | async) || (isPreparing$ | async) || (isCountingDown$ | async) || (showFinalVideo$ | async)) ? 'mx-auto w-full max-w-6xl' : ''">
         @if (!(showFinalVideo$ | async)) {
           <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 sm:px-6">
             <div class="flex items-center gap-3">
@@ -153,9 +175,14 @@
               <span class="text-xs font-semibold text-slate-500">Monitor de captura</span>
             </div>
             <div aria-live="polite" class="flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold"
-              [ngClass]="(isRecording$ | async) ? ((isPaused$ | async) ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-700') : 'bg-slate-100 text-slate-500'">
-              <span class="h-2 w-2 rounded-full" [ngClass]="(isRecording$ | async) ? ((isPaused$ | async) ? 'bg-amber-500' : 'recording-dot bg-rose-500') : 'bg-slate-400'"></span>
-              @if (isRecording$ | async) {
+              [ngClass]="(isPreparing$ | async) ? 'bg-sky-50 text-sky-700' : (isCountingDown$ | async) ? 'bg-indigo-50 text-indigo-700' : (isRecording$ | async) ? ((isPaused$ | async) ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-700') : 'bg-slate-100 text-slate-500'">
+              <span class="h-2 w-2 rounded-full"
+                [ngClass]="(isPreparing$ | async) ? 'recording-dot bg-sky-500' : (isCountingDown$ | async) ? 'recording-dot bg-indigo-500' : (isRecording$ | async) ? ((isPaused$ | async) ? 'bg-amber-500' : 'recording-dot bg-rose-500') : 'bg-slate-400'"></span>
+              @if (isPreparing$ | async) {
+                Preparando captura
+              } @else if (isCountingDown$ | async) {
+                Inicia en {{ countdown$ | async }}
+              } @else if (isRecording$ | async) {
                 {{ (isPaused$ | async) ? 'En pausa' : 'Grabando' }}
               } @else {
                 Listo para grabar
@@ -165,7 +192,7 @@
           <div class="bg-slate-950 p-3 sm:p-5">
             <div class="video-shell relative aspect-video overflow-hidden rounded-2xl border border-white/10 bg-[#090d18] shadow-2xl">
               <video id="preview" class="h-full w-full object-contain" autoplay muted playsinline></video>
-              @if (!(isRecording$ | async) && !(isCountingDown$ | async)) {
+              @if (!(isRecording$ | async) && !(isPreparing$ | async) && !(isCountingDown$ | async)) {
                 <div class="absolute inset-0 grid place-items-center px-6 text-center">
                   <div>
                     <div class="mx-auto grid h-16 w-16 place-items-center rounded-2xl border border-white/10 bg-white/[0.06] text-indigo-300 shadow-2xl backdrop-blur">
@@ -175,6 +202,15 @@
                     </div>
                     <p class="mt-5 text-base font-semibold text-white">Tu vista previa aparecerá aquí</p>
                     <p class="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-400">Configura la calidad y el audio, luego inicia una nueva grabación.</p>
+                  </div>
+                </div>
+              }
+              @if (isPreparing$ | async) {
+                <div class="absolute inset-0 grid place-items-center bg-slate-950/90 px-6 text-center backdrop-blur-sm">
+                  <div>
+                    <span class="preparing-spinner mx-auto block h-14 w-14 rounded-full border-4 border-white/15 border-t-sky-400"></span>
+                    <p class="mt-5 text-base font-bold text-white">Preparando la captura</p>
+                    <p class="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-400">Confirma la pantalla y los permisos de audio. La grabación todavía no ha comenzado.</p>
                   </div>
                 </div>
               }
@@ -203,20 +239,20 @@
           </div>
           <div class="flex min-h-24 flex-wrap items-center justify-between gap-4 border-t border-slate-100 bg-white px-5 py-5 sm:px-6">
             <div class="hidden items-center gap-2 text-xs text-slate-400 sm:flex">
-              <kbd class="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 font-sans font-semibold text-slate-500">{{ selectedQuality }}</kbd>
+              <kbd class="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 font-sans font-semibold text-slate-500">{{ (captureResolution$ | async) === 'Pendiente' ? selectedQuality : (captureResolution$ | async) }}</kbd>
               <span>•</span>
-              <span>30 FPS</span>
+              <span>{{ captureFrameRate$ | async }}</span>
               <span>•</span>
-              <span>Formato WebM</span>
+              <span>{{ capturedAudio$ | async }}</span>
             </div>
             <div class="ml-auto flex w-full flex-wrap justify-center gap-2.5 sm:w-auto sm:justify-end">
-              @if (isCountingDown$ | async) {
+              @if ((isPreparing$ | async) || (isCountingDown$ | async)) {
                 <button type="button" (click)="cancelCountdown()"
                   class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-slate-200">
                   Cancelar
                 </button>
               }
-              @if (!(isRecording$ | async) && !(isCountingDown$ | async)) {
+              @if (!(isRecording$ | async) && !(isPreparing$ | async) && !(isCountingDown$ | async)) {
                 <button type="button" (click)="startRecording()" [disabled]="!isBrowserSupported"
                   class="inline-flex min-w-48 items-center justify-center gap-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/25 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-indigo-500/30 focus:outline-none focus:ring-4 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0">
                   <span class="grid h-6 w-6 place-items-center rounded-lg bg-white/15">
@@ -270,52 +306,54 @@
               </video>
             }
           </div>
-          <div class="flex flex-col gap-4 border-t border-slate-100 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-            <div class="text-xs leading-5 text-slate-400">
-              <p class="font-semibold text-slate-600">Grabación {{ selectedQuality }} · WebM</p>
-              <p>{{ (recordingDate$ | async) | date:'dd MMM yyyy, HH:mm' }}</p>
+          <div class="border-t border-slate-100 px-5 py-5 sm:px-6">
+            <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+              <div>
+                <label for="recording-file-name" class="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-slate-500">Nombre del archivo</label>
+                <div class="relative max-w-xl">
+                  <input id="recording-file-name" type="text" [ngModel]="recordingFileName$ | async" (ngModelChange)="renameRecording($event)" autocomplete="off" spellcheck="false" maxlength="120"
+                    class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-16 text-sm font-semibold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                    aria-describedby="recording-file-help">
+                  <span aria-hidden="true" class="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">.webm</span>
+                </div>
+                <p id="recording-file-help" class="mt-2 text-xs text-slate-400">{{ (recordingDate$ | async) | date:'dd MMM yyyy, HH:mm' }}</p>
+              </div>
+              <div class="flex flex-col-reverse gap-2.5 sm:flex-row">
+                <button type="button" (click)="reset()"
+                  class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-slate-200">
+                  <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>
+                  Nueva grabación
+                </button>
+                <button type="button" (click)="downloadRecording()"
+                  class="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/25 transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-indigo-200">
+                  <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg>
+                  Guardar grabación
+                </button>
+              </div>
             </div>
-            <div class="flex flex-col-reverse gap-2.5 sm:flex-row">
-              <button type="button" (click)="reset()"
-                class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-slate-200">
-                <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>
-                Nueva grabación
-              </button>
-              <button type="button" (click)="downloadRecording()"
-                class="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/25 transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-indigo-200">
-                <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg>
-                Descargar video
-              </button>
-            </div>
+            <dl class="mt-5 grid gap-2 sm:grid-cols-3">
+              <div class="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                <dt class="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Resolución</dt>
+                <dd class="mt-1 text-sm font-bold text-slate-700">{{ captureResolution$ | async }}</dd>
+              </div>
+              <div class="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                <dt class="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Fluidez</dt>
+                <dd class="mt-1 text-sm font-bold text-slate-700">{{ captureFrameRate$ | async }}</dd>
+              </div>
+              <div class="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                <dt class="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Audio capturado</dt>
+                <dd class="mt-1 text-sm font-bold text-slate-700">{{ capturedAudio$ | async }}</dd>
+              </div>
+            </dl>
           </div>
         }
 
       </section>
     </div>
 
-    <div class="mt-6 grid gap-3 sm:grid-cols-3">
-      <div class="flex items-center gap-3 rounded-2xl border border-white bg-white/70 px-4 py-3 text-sm text-slate-500 shadow-sm">
-        <span class="grid h-8 w-8 place-items-center rounded-lg bg-indigo-50 text-indigo-600">
-          <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>
-        </span>
-        <span><strong class="block text-slate-700">Audio combinado</strong>Micrófono y sistema</span>
-      </div>
-      <div class="flex items-center gap-3 rounded-2xl border border-white bg-white/70 px-4 py-3 text-sm text-slate-500 shadow-sm">
-        <span class="grid h-8 w-8 place-items-center rounded-lg bg-emerald-50 text-emerald-600">
-          <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
-        </span>
-        @if (isDesktopMode) {
-          <span><strong class="block text-slate-700">Pantalla completa</strong>Monitor principal automático</span>
-        } @else {
-          <span><strong class="block text-slate-700">Modo web</strong>Selección protegida por navegador</span>
-        }
-      </div>
-      <div class="flex items-center gap-3 rounded-2xl border border-white bg-white/70 px-4 py-3 text-sm text-slate-500 shadow-sm">
-        <span class="grid h-8 w-8 place-items-center rounded-lg bg-violet-50 text-violet-600">
-          <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>
-        </span>
-        <span><strong class="block text-slate-700">Privacidad primero</strong>Procesamiento en tu equipo</span>
-      </div>
-    </div>
+    <footer class="mt-5 flex flex-col items-center justify-between gap-1 text-center text-xs text-slate-400 sm:flex-row sm:text-left">
+      <span>Procesamiento local y privado</span>
+      <span>WebM · sin cargas externas</span>
+    </footer>
   </div>
 </main>

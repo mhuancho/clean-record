@@ -15,10 +15,11 @@ export class ScreenRecorderControllerService {
   private cleanupMedia?: () => void;
   private previewElement?: HTMLVideoElement;
   private captureAttempt = 0;
-  private recordingFileName = 'grabacion.webm';
+  private recordingFileName = 'grabacion';
 
   isRecording$ = new BehaviorSubject(false);
   isPaused$ = new BehaviorSubject(false);
+  isPreparing$ = new BehaviorSubject(false);
   isCountingDown$ = new BehaviorSubject(false);
   countdown$ = new BehaviorSubject(0);
   recordingTime$ = new BehaviorSubject('00:00');
@@ -26,6 +27,10 @@ export class ScreenRecorderControllerService {
   previewUrl$ = new BehaviorSubject<string | null>(null);
   recordingSize$ = new BehaviorSubject('0 MB');
   recordingDate$ = new BehaviorSubject<Date | null>(null);
+  recordingFileName$ = new BehaviorSubject('grabacion');
+  captureResolution$ = new BehaviorSubject('Pendiente');
+  captureFrameRate$ = new BehaviorSubject('30 FPS objetivo');
+  capturedAudio$ = new BehaviorSubject('Sin verificar');
 
   constructor(
     private recorderService: ScreenRecorderService,
@@ -52,7 +57,7 @@ export class ScreenRecorderControllerService {
   }
 
   async startRecording(options: RecordingOptions, videoElement: HTMLVideoElement) {
-    if (this.isRecording$.value || this.isCountingDown$.value) return;
+    if (this.isRecording$.value || this.isPreparing$.value || this.isCountingDown$.value) return;
     if (!navigator.mediaDevices?.getDisplayMedia || typeof MediaRecorder === 'undefined') {
       this.notificationService.error('Este entorno no soporta la grabación de pantalla.');
       return;
@@ -64,15 +69,19 @@ export class ScreenRecorderControllerService {
     this.showFinalVideo$.next(false);
     this.recordingSize$.next('0 MB');
     this.recordingDate$.next(null);
+    this.captureResolution$.next('Detectando…');
+    this.captureFrameRate$.next('Detectando…');
+    this.capturedAudio$.next('Verificando…');
     this.countdown$.next(3);
-    this.isCountingDown$.next(true);
+    this.isPreparing$.next(true);
+    this.isCountingDown$.next(false);
 
     try {
       // getDisplayMedia se invoca dentro del gesto del usuario. En navegador esto
       // permite mostrar el selector antes de la cuenta regresiva; Electron lo resuelve
       // automáticamente con el monitor principal.
       const media = await this.recorderService.getCombinedStream(options);
-      if (attempt !== this.captureAttempt || !this.isCountingDown$.value) {
+      if (attempt !== this.captureAttempt || !this.isPreparing$.value) {
         media.cleanup();
         return;
       }
@@ -80,6 +89,7 @@ export class ScreenRecorderControllerService {
       const stream = media.stream;
       this.cleanupMedia = media.cleanup;
       this.previewElement = videoElement;
+      this.updateCaptureDetails(media);
 
       if ((options.includeMicrophone || options.includeSystemAudio) && stream.getAudioTracks().length === 0) {
         this.notificationService.warning('La grabación continuará sin audio porque no se detectó ninguna fuente.');
@@ -92,7 +102,7 @@ export class ScreenRecorderControllerService {
       videoElement.srcObject = stream;
       await videoElement.play();
 
-      if (attempt !== this.captureAttempt || !this.isCountingDown$.value) {
+      if (attempt !== this.captureAttempt || !this.isPreparing$.value) {
         media.cleanup();
         videoElement.srcObject = null;
         return;
@@ -101,15 +111,18 @@ export class ScreenRecorderControllerService {
       stream.getVideoTracks()[0]?.addEventListener('ended', () => {
         if (this.isRecording$.value) {
           this.stop();
-        } else if (this.isCountingDown$.value && attempt === this.captureAttempt) {
+        } else if ((this.isPreparing$.value || this.isCountingDown$.value) && attempt === this.captureAttempt) {
           this.cancelCountdown();
           this.notificationService.info('La captura de pantalla se detuvo antes de iniciar la grabación.');
         }
       }, { once: true });
 
+      this.isPreparing$.next(false);
+      this.isCountingDown$.next(true);
       this.beginCountdown(options, videoElement, stream);
     } catch (error: unknown) {
       if (attempt !== this.captureAttempt) return;
+      this.isPreparing$.next(false);
       this.isCountingDown$.next(false);
       this.countdown$.next(0);
       this.handleStartError(error);
@@ -123,6 +136,7 @@ export class ScreenRecorderControllerService {
     this.captureAttempt++;
     if (this.countdownInterval) clearInterval(this.countdownInterval);
     this.countdownInterval = undefined;
+    this.isPreparing$.next(false);
     this.isCountingDown$.next(false);
     this.countdown$.next(0);
     this.cleanupMedia?.();
@@ -179,7 +193,8 @@ export class ScreenRecorderControllerService {
         const date = new Date();
         this.recordingDate$.next(date);
         this.recordingSize$.next(this.formatFileSize(blob.size));
-        this.recordingFileName = `grabacion-${date.toISOString().replace(/[:.]/g, '-')}` + '.webm';
+        this.recordingFileName = `grabacion-${date.toISOString().replace(/[:.]/g, '-')}`;
+        this.recordingFileName$.next(this.recordingFileName);
         this.showFinalVideo$.next(true);
       };
 
@@ -246,7 +261,10 @@ export class ScreenRecorderControllerService {
 
     const link = renderer.createElement('a');
     renderer.setAttribute(link, 'href', url);
-    renderer.setAttribute(link, 'download', this.recordingFileName);
+    const fileName = this.recordingFileName.toLowerCase().endsWith('.webm')
+      ? this.recordingFileName
+      : `${this.recordingFileName}.webm`;
+    renderer.setAttribute(link, 'download', fileName);
     renderer.setStyle(link, 'display', 'none');
     renderer.appendChild(document.body, link);
     link.click();
@@ -265,7 +283,34 @@ export class ScreenRecorderControllerService {
     this.showFinalVideo$.next(false);
     this.recordingSize$.next('0 MB');
     this.recordingDate$.next(null);
+    this.recordingFileName = 'grabacion';
+    this.recordingFileName$.next(this.recordingFileName);
+    this.captureResolution$.next('Pendiente');
+    this.captureFrameRate$.next('30 FPS objetivo');
+    this.capturedAudio$.next('Sin verificar');
     this.stopTimer(true);
+  }
+
+  updateRecordingFileName(value: string) {
+    const sanitized = value
+      .replace(/[<>:"/\\|?*\u0000-\u001F]/g, '-')
+      .trim()
+      .replace(/\.webm$/i, '')
+      .trim();
+    this.recordingFileName = sanitized || 'grabacion';
+    this.recordingFileName$.next(this.recordingFileName);
+  }
+
+  private updateCaptureDetails(media: Awaited<ReturnType<ScreenRecorderService['getCombinedStream']>>) {
+    const { width, height, frameRate, microphoneCaptured, systemAudioCaptured } = media.details;
+    this.captureResolution$.next(width && height ? `${width} × ${height}` : 'Resolución del dispositivo');
+    this.captureFrameRate$.next(frameRate ? `${Math.round(frameRate)} FPS` : '30 FPS objetivo');
+
+    const audioSources = [
+      ...(microphoneCaptured ? ['Micrófono'] : []),
+      ...(systemAudioCaptured ? ['Sistema'] : [])
+    ];
+    this.capturedAudio$.next(audioSources.length > 0 ? audioSources.join(' + ') : 'Sin audio');
   }
   private releasePreviewUrl() {
     const currentUrl = this.previewUrl$.value;

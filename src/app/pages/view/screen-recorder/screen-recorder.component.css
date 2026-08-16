@@ -7,6 +7,7 @@
     linear-gradient(rgba(100, 116, 139, 0.045) 1px, transparent 1px),
     linear-gradient(90deg, rgba(100, 116, 139, 0.045) 1px, transparent 1px);
   background-size: 42px 42px;
+  -webkit-mask-image: linear-gradient(to bottom, black, transparent 86%);
   mask-image: linear-gradient(to bottom, black, transparent 86%);
 }
 
@@ -25,6 +26,10 @@
 
 .countdown-number {
   animation: countdown-pop 1s ease-in-out infinite;
+}
+
+.preparing-spinner {
+  animation: preparing-spin 0.8s linear infinite;
 }
 
 .timer-digits {
@@ -55,9 +60,16 @@
   }
 }
 
+@keyframes preparing-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .recording-dot,
-  .countdown-number {
+  .countdown-number,
+  .preparing-spinner {
     animation: none;
   }
 }

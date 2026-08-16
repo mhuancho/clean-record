@@ -10,6 +10,13 @@ export interface RecordingOptions {
 export interface RecordingMedia {
   stream: MediaStream;
   cleanup: () => void;
+  details: {
+    width?: number;
+    height?: number;
+    frameRate?: number;
+    microphoneCaptured: boolean;
+    systemAudioCaptured: boolean;
+  };
 }
 
 type ScreenVideoConstraints = MediaTrackConstraints & {
@@ -141,6 +148,7 @@ export class ScreenRecorderService {
       }
 
       activeScreenStream.getVideoTracks().forEach(track => track.contentHint = 'detail');
+      const videoSettings = activeScreenStream.getVideoTracks()[0]?.getSettings?.() ?? {};
       const stream = new MediaStream([
         ...activeScreenStream.getVideoTracks(),
         ...outputAudioTracks
@@ -150,6 +158,13 @@ export class ScreenRecorderService {
 
       return {
         stream,
+        details: {
+          width: videoSettings.width,
+          height: videoSettings.height,
+          frameRate: videoSettings.frameRate,
+          microphoneCaptured: microphoneTracks.length > 0,
+          systemAudioCaptured: systemAudioTracks.length > 0
+        },
         cleanup: () => {
           if (cleaned) return;
           cleaned = true;

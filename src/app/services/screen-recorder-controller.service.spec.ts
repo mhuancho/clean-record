@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 
 import { NotificationService } from './notification.service';
 import { ScreenRecorderControllerService } from './screen-recorder-controller.service';
-import { ScreenRecorderService } from './screen-recorder.service';
+import { type RecordingMedia, ScreenRecorderService } from './screen-recorder.service';
 
 class MediaRecorderMock {
   static readonly instances: MediaRecorderMock[] = [];
@@ -23,7 +23,8 @@ class MediaRecorderMock {
 describe('ScreenRecorderControllerService', () => {
   let service: ScreenRecorderControllerService;
   let getCombinedStream: ReturnType<typeof vi.fn>;
-  let cleanup: ReturnType<typeof vi.fn>;
+  let cleanup: () => void;
+  let combinedMedia: RecordingMedia;
   let videoElement: HTMLVideoElement;
   let mediaDevicesDescriptor: PropertyDescriptor | undefined;
 
@@ -51,7 +52,18 @@ describe('ScreenRecorderControllerService', () => {
       getTracks: vi.fn(() => [videoTrack])
     } as unknown as MediaStream;
     cleanup = vi.fn();
-    getCombinedStream = vi.fn().mockResolvedValue({ stream, cleanup });
+    combinedMedia = {
+      stream,
+      cleanup,
+      details: {
+        width: 1920,
+        height: 1080,
+        frameRate: 30,
+        microphoneCaptured: true,
+        systemAudioCaptured: true
+      }
+    };
+    getCombinedStream = vi.fn().mockResolvedValue(combinedMedia);
     videoElement = {
       srcObject: null,
       play: vi.fn().mockResolvedValue(undefined)
@@ -100,6 +112,10 @@ describe('ScreenRecorderControllerService', () => {
     expect(videoElement.muted).toBe(true);
     expect(videoElement.volume).toBe(0);
     expect(service.isCountingDown$.value).toBe(true);
+    expect(service.isPreparing$.value).toBe(false);
+    expect(service.captureResolution$.value).toBe('1920 × 1080');
+    expect(service.captureFrameRate$.value).toBe('30 FPS');
+    expect(service.capturedAudio$.value).toBe('Micrófono + Sistema');
     expect(MediaRecorderMock.instances).toHaveLength(0);
 
     await vi.advanceTimersByTimeAsync(3_000);
@@ -107,6 +123,28 @@ describe('ScreenRecorderControllerService', () => {
     expect(MediaRecorderMock.instances).toHaveLength(1);
     expect(MediaRecorderMock.instances[0].start).toHaveBeenCalledOnce();
     expect(service.isRecording$.value).toBe(true);
+  });
+
+  it('expone el estado de preparación mientras espera los permisos', async () => {
+    let resolveMedia!: (media: RecordingMedia) => void;
+    getCombinedStream.mockReturnValueOnce(new Promise<RecordingMedia>(resolve => {
+      resolveMedia = resolve;
+    }));
+
+    const startPromise = service.startRecording({
+      quality: '1080p',
+      includeMicrophone: true,
+      includeSystemAudio: true
+    }, videoElement);
+
+    expect(service.isPreparing$.value).toBe(true);
+    expect(service.isCountingDown$.value).toBe(false);
+
+    resolveMedia(combinedMedia);
+    await startPromise;
+
+    expect(service.isPreparing$.value).toBe(false);
+    expect(service.isCountingDown$.value).toBe(true);
   });
 
   it('libera la captura si se cancela durante la cuenta regresiva', async () => {
@@ -123,5 +161,11 @@ describe('ScreenRecorderControllerService', () => {
     expect(videoElement.srcObject).toBeNull();
     expect(MediaRecorderMock.instances).toHaveLength(0);
     expect(service.isRecording$.value).toBe(false);
+  });
+
+  it('normaliza el nombre antes de descargar', () => {
+    service.updateRecordingFileName('  demo:final.webm  ');
+
+    expect(service.recordingFileName$.value).toBe('demo-final');
   });
 });
