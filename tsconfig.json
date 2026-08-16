@@ -4,7 +4,8 @@
   "compileOnSave": false,
   "compilerOptions": {
     "outDir": "./dist/out-tsc",
-        "paths": {
+    "rootDir": "./src",
+    "paths": {
       "@shared/*": ["./src/app/shared/*"],
       "@services/*": ["./src/app/services/*"],
       "@pages/*": ["./src/app/pages/*"],

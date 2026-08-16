@@ -1,9 +1,8 @@
 <main class="relative min-h-screen overflow-hidden bg-[#f4f6fb] text-slate-900">
-  <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.12),transparent_34%),radial-gradient(circle_at_85%_30%,rgba(14,165,233,0.09),transparent_26%)]"></div>
-  <div class="ambient-grid pointer-events-none absolute inset-0 opacity-60"></div>
+  <div class="ambient-grid pointer-events-none absolute inset-0 opacity-45"></div>
 
   <header class="relative z-10 border-b border-slate-200/80 bg-white/75 backdrop-blur-xl">
-    <div class="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
+    <div class="mx-auto flex max-w-7xl items-center justify-between px-5 py-3 sm:px-8">
       <a class="flex items-center gap-3" href="/" aria-label="Ir al inicio de CleanRecord">
         <span class="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-700 text-white shadow-lg shadow-indigo-500/20">
           <svg aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="none">
@@ -24,18 +23,14 @@
     </div>
   </header>
 
-  <div class="relative z-10 mx-auto max-w-7xl px-5 pb-10 pt-10 sm:px-8 lg:pt-14">
-    <section class="mx-auto mb-9 max-w-3xl text-center">
-      <div class="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-white/80 px-3 py-1.5 text-xs font-semibold text-indigo-700 shadow-sm">
-        <span class="h-1.5 w-1.5 rounded-full bg-indigo-500"></span>
-        Grabación simple, clara y segura
+  <div class="relative z-10 mx-auto max-w-7xl px-5 pb-10 pt-5 sm:px-8 sm:pt-6">
+    <section aria-labelledby="recorder-title" class="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
+      <div>
+        <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600">Estudio de captura</p>
+        <h1 id="recorder-title" class="mt-1 text-2xl font-black text-slate-950 sm:text-3xl">Grabador de pantalla</h1>
       </div>
-      <h1 class="text-balance text-4xl font-black tracking-[-0.04em] text-slate-950 sm:text-5xl">
-        Tu pantalla, lista para
-        <span class="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">grabar.</span>
-      </h1>
-      <p class="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-500 sm:text-lg">
-        Captura tu pantalla con audio, revisa el resultado y descarga el archivo sin subirlo a servidores externos.
+      <p class="max-w-xl text-sm leading-5 text-slate-500 sm:text-right">
+        Configura el audio, inicia la captura y descarga el resultado. Todo se procesa en este dispositivo.
       </p>
     </section>
 
@@ -45,24 +40,6 @@
           <path d="M12 9v4m0 4h.01M10.3 3.9 2.6 17.1A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.9L13.7 3.9a2 2 0 0 0-3.4 0Z"/>
         </svg>
         <div><strong>Navegador no compatible.</strong> Abre CleanRecord en una versión reciente de Chrome, Edge o Firefox.</div>
-      </div>
-    }
-
-    @if (isBrowserSupported && !isDesktopMode) {
-      <div role="status" class="mx-auto mb-6 flex max-w-4xl items-start gap-3 rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
-        <svg aria-hidden="true" class="mt-0.5 h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 9v4m0 4h.01M10.3 3.9 2.6 17.1A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.9L13.7 3.9a2 2 0 0 0-3.4 0Z"/>
-        </svg>
-        <div><strong>Modo navegador.</strong> Por seguridad, Chrome, Edge y Firefox siempre exigen elegir la pantalla. Ejecuta la versión de escritorio para capturar automáticamente todo el monitor principal.</div>
-      </div>
-    }
-
-    @if (isDesktopMode) {
-      <div role="status" class="mx-auto mb-6 flex max-w-4xl items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-        <svg aria-hidden="true" class="mt-0.5 h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="m5 12 4 4L19 6"/>
-        </svg>
-        <div><strong>Modo escritorio.</strong> Se capturará todo el monitor principal sin mostrar el selector de compartir pantalla.</div>
       </div>
     }
 
@@ -80,6 +57,24 @@
             </svg>
           </span>
         </div>
+
+        @if (isBrowserSupported && !isDesktopMode) {
+          <div role="status" class="mb-5 flex items-start gap-2.5 rounded-xl border border-sky-200 bg-sky-50 p-3 text-[11px] leading-4 text-sky-900">
+            <svg aria-hidden="true" class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 9v4m0 4h.01M10.3 3.9 2.6 17.1A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.9L13.7 3.9a2 2 0 0 0-3.4 0Z"/>
+            </svg>
+            <div><strong>Modo navegador.</strong> Por seguridad, Chrome, Edge y Firefox siempre exigen elegir la pantalla. Ejecuta la versión de escritorio para capturar automáticamente todo el monitor principal.</div>
+          </div>
+        }
+
+        @if (isDesktopMode) {
+          <div role="status" class="mb-5 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-[11px] leading-4 text-emerald-900">
+            <svg aria-hidden="true" class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m5 12 4 4L19 6"/>
+            </svg>
+            <div><strong>Modo escritorio.</strong> Se capturará todo el monitor principal sin mostrar el selector de compartir pantalla.</div>
+          </div>
+        }
 
         <fieldset [disabled]="(isRecording$ | async) || (isCountingDown$ | async)">
           <legend class="mb-3 text-sm font-bold text-slate-700">Calidad de video</legend>
