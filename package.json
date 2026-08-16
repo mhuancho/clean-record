@@ -1,39 +1,65 @@
 {
   "name": "clean-record",
   "version": "0.0.0",
+  "description": "Grabador de pantalla completa con audio local",
+  "author": "Mateo Huancho",
+  "main": "electron/main.cjs",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "desktop:build": "ng build --configuration production --base-href ./",
+    "desktop": "npm run desktop:build && electron .",
+    "desktop:package": "npm run desktop:build && electron-builder --win",
+    "desktop:package:dir": "npm run desktop:build && electron-builder --win --dir"
   },
   "private": true,
   "dependencies": {
-    "@angular/common": "^19.2.0",
-    "@angular/compiler": "^19.2.0",
-    "@angular/core": "^19.2.0",
-    "@angular/forms": "^19.2.0",
-    "@angular/platform-browser": "^19.2.0",
-    "@angular/platform-browser-dynamic": "^19.2.0",
-    "@angular/router": "^19.2.0",
-    "rxjs": "~7.8.0",
-    "tslib": "^2.3.0",
-    "zone.js": "~0.15.0",
+    "@angular/common": "^22.1.2",
+    "@angular/compiler": "^22.1.2",
+    "@angular/core": "^22.1.2",
+    "@angular/forms": "^22.1.2",
+    "@angular/platform-browser": "^22.1.2",
+    "@angular/platform-browser-dynamic": "^22.1.2",
+    "@angular/router": "^22.1.2",
     "@tailwindcss/postcss": "^4.1.11",
-    "tailwindcss": "^4.1.11"
+    "rxjs": "~7.8.0",
+    "tailwindcss": "^4.1.11",
+    "tslib": "^2.3.0",
+    "zone.js": "~0.15.0"
   },
   "devDependencies": {
-    "@angular-devkit/build-angular": "^19.2.14",
-    "@angular/cli": "^19.2.14",
-    "@angular/compiler-cli": "^19.2.0",
-    "@types/jasmine": "~5.1.0",
-    "jasmine-core": "~5.6.0",
-    "karma": "~6.4.0",
-    "karma-chrome-launcher": "~3.2.0",
-    "karma-coverage": "~2.2.0",
-    "karma-jasmine": "~5.1.0",
-    "karma-jasmine-html-reporter": "~2.1.0",
-    "typescript": "~5.7.2"
+    "@angular/build": "^22.1.4",
+    "@angular/cli": "^22.1.4",
+    "@angular/compiler-cli": "^22.1.2",
+    "electron": "^43.4.0",
+    "electron-builder": "^26.15.3",
+    "jsdom": "^30.0.1",
+    "postcss": "^8.5.3",
+    "typescript": "~6.0.3",
+    "vitest": "^4.0.8"
+  },
+  "build": {
+    "appId": "com.cleanrecord.desktop",
+    "productName": "Clean Record",
+    "asar": true,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/clean-record/browser/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "artifactName": "Clean-Record-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }

@@ -1,114 +1,326 @@
-<div class="max-w-3xl mx-auto p-6 space-y-6 relative">
+<main class="relative min-h-screen overflow-hidden bg-[#f4f6fb] text-slate-900">
+  <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.12),transparent_34%),radial-gradient(circle_at_85%_30%,rgba(14,165,233,0.09),transparent_26%)]"></div>
+  <div class="ambient-grid pointer-events-none absolute inset-0 opacity-60"></div>
 
-  <!-- CONTENIDO PRINCIPAL -->
-  <div *ngIf="!(showWatchButton$ | async)">
+  <header class="relative z-10 border-b border-slate-200/80 bg-white/75 backdrop-blur-xl">
+    <div class="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
+      <a class="flex items-center gap-3" href="/" aria-label="Ir al inicio de CleanRecord">
+        <span class="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-700 text-white shadow-lg shadow-indigo-500/20">
+          <svg aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="none">
+            <rect x="3" y="5" width="13" height="14" rx="4" stroke="currentColor" stroke-width="2"/>
+            <path d="m16 10 4-2v8l-4-2v-4Z" fill="currentColor"/>
+          </svg>
+        </span>
+        <span>
+          <span class="block text-base font-bold tracking-tight">CleanRecord</span>
+          <span class="block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Screen studio</span>
+        </span>
+      </a>
 
-    <!-- CONTROLES Y SELECTOR EN UNA FILA -->
-    <div class="flex flex-wrap justify-between items-center gap-4">
-      <!-- Botones -->
-      <div class="flex flex-wrap gap-3">
-        <button
-          title="Iniciar grabación"
-          (click)="startRecording()"
-          [disabled]="(isRecording$ | async) || (isCountingDown$ | async)"
-          class="px-4 py-2 text-sm rounded-md font-medium text-green-700 hover:bg-green-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
-        >
-          🎥 Iniciar
-        </button>
-
-        <button
-          title="Pausar grabación"
-          *ngIf="(isRecording$ | async) && !(isPaused$ | async)"
-          (click)="pauseRecording()"
-          class="px-4 py-2 text-sm rounded-md font-medium text-yellow-600 hover:bg-yellow-100 transition"
-        >
-          ⏸ Pausar
-        </button>
-
-        <button
-          title="Reanudar grabación"
-          *ngIf="(isRecording$ | async) && (isPaused$ | async)"
-          (click)="resumeRecording()"
-          class="px-4 py-2 text-sm rounded-md font-medium text-blue-600 hover:bg-blue-100 transition"
-        >
-          ▶️ Reanudar
-        </button>
-
-        <button
-          title="Detener y guardar grabación"
-          *ngIf="(isRecording$ | async)"
-          (click)="stopRecording()"
-          class="px-4 py-2 text-sm rounded-md font-medium text-red-600 hover:bg-red-100 transition"
-        >
-          ⏹ Detener
-        </button>
-      </div>
-
-      <!-- Selector de calidad -->
-      <div class="flex items-center gap-2 text-sm">
-        <label for="quality" class="text-gray-600">Calidad:</label>
-        <select
-          id="quality"
-          [(ngModel)]="selectedQuality"
-          class="px-2 py-1 border rounded-md shadow-sm focus:ring focus:ring-indigo-200"
-        >
-          <option value="1080p">1080p (HD)</option>
-          <option value="720p">720p</option>
-        </select>
+      <div class="flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+        <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+        Procesamiento local
       </div>
     </div>
+  </header>
 
-    <!-- CUENTA REGRESIVA -->
-    <div *ngIf="isCountingDown$ | async" class="text-center text-5xl font-bold text-gray-700 mt-4 animate-pulse">
-      {{ countdown$ | async }}
+  <div class="relative z-10 mx-auto max-w-7xl px-5 pb-10 pt-10 sm:px-8 lg:pt-14">
+    <section class="mx-auto mb-9 max-w-3xl text-center">
+      <div class="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-white/80 px-3 py-1.5 text-xs font-semibold text-indigo-700 shadow-sm">
+        <span class="h-1.5 w-1.5 rounded-full bg-indigo-500"></span>
+        Grabación simple, clara y segura
+      </div>
+      <h1 class="text-balance text-4xl font-black tracking-[-0.04em] text-slate-950 sm:text-5xl">
+        Tu pantalla, lista para
+        <span class="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">grabar.</span>
+      </h1>
+      <p class="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-500 sm:text-lg">
+        Captura tu pantalla con audio, revisa el resultado y descarga el archivo sin subirlo a servidores externos.
+      </p>
+    </section>
+
+    @if (!isBrowserSupported) {
+      <div role="alert" class="mx-auto mb-6 flex max-w-4xl items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+        <svg aria-hidden="true" class="mt-0.5 h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 9v4m0 4h.01M10.3 3.9 2.6 17.1A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.9L13.7 3.9a2 2 0 0 0-3.4 0Z"/>
+        </svg>
+        <div><strong>Navegador no compatible.</strong> Abre CleanRecord en una versión reciente de Chrome, Edge o Firefox.</div>
+      </div>
+    }
+
+    @if (isBrowserSupported && !isDesktopMode) {
+      <div role="status" class="mx-auto mb-6 flex max-w-4xl items-start gap-3 rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
+        <svg aria-hidden="true" class="mt-0.5 h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 9v4m0 4h.01M10.3 3.9 2.6 17.1A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.9L13.7 3.9a2 2 0 0 0-3.4 0Z"/>
+        </svg>
+        <div><strong>Modo navegador.</strong> Por seguridad, Chrome, Edge y Firefox siempre exigen elegir la pantalla. Ejecuta la versión de escritorio para capturar automáticamente todo el monitor principal.</div>
+      </div>
+    }
+
+    @if (isDesktopMode) {
+      <div role="status" class="mx-auto mb-6 flex max-w-4xl items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+        <svg aria-hidden="true" class="mt-0.5 h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="m5 12 4 4L19 6"/>
+        </svg>
+        <div><strong>Modo escritorio.</strong> Se capturará todo el monitor principal sin mostrar el selector de compartir pantalla.</div>
+      </div>
+    }
+
+    <div class="grid items-start gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
+      <aside class="order-2 rounded-3xl border border-white/90 bg-white/90 p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur lg:order-1 lg:sticky lg:top-6">
+        <div class="mb-6 flex items-center justify-between">
+          <div>
+            <p class="text-xs font-bold uppercase tracking-[0.16em] text-indigo-600">Configuración</p>
+            <h2 class="mt-1 text-lg font-bold text-slate-900">Antes de grabar</h2>
+          </div>
+          <span class="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-500">
+            <svg aria-hidden="true" class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/>
+              <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/>
+            </svg>
+          </span>
+        </div>
+
+        <fieldset [disabled]="(isRecording$ | async) || (isCountingDown$ | async)">
+          <legend class="mb-3 text-sm font-bold text-slate-700">Calidad de video</legend>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" (click)="selectedQuality = '720p'" [attr.aria-pressed]="selectedQuality === '720p'"
+              class="rounded-xl border px-3 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-50"
+              [ngClass]="selectedQuality === '720p' ? 'border-indigo-500 bg-indigo-50 text-indigo-900 ring-2 ring-indigo-500/10' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'">
+              <span class="block text-sm font-bold">720p</span>
+              <span class="mt-0.5 block text-[11px] opacity-70">Archivo ligero</span>
+            </button>
+            <button type="button" (click)="selectedQuality = '1080p'" [attr.aria-pressed]="selectedQuality === '1080p'"
+              class="rounded-xl border px-3 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-50"
+              [ngClass]="selectedQuality === '1080p' ? 'border-indigo-500 bg-indigo-50 text-indigo-900 ring-2 ring-indigo-500/10' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'">
+              <span class="flex items-center gap-1.5 text-sm font-bold">1080p <span class="rounded bg-indigo-600 px-1.5 py-0.5 text-[8px] uppercase tracking-wider text-white">Pro</span></span>
+              <span class="mt-0.5 block text-[11px] opacity-70">Alta definición</span>
+            </button>
+          </div>
+
+          <div class="my-5 h-px bg-slate-100"></div>
+
+          <p class="mb-3 text-sm font-bold text-slate-700">Fuentes de audio</p>
+          <div class="space-y-2">
+            <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-3 transition hover:bg-slate-50">
+              <span class="grid h-9 w-9 place-items-center rounded-lg bg-violet-50 text-violet-600">
+                <svg aria-hidden="true" class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3m-3 0h6"/>
+                </svg>
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="block text-sm font-semibold text-slate-800">Micrófono</span>
+                <span class="block truncate text-[11px] text-slate-400">Tu voz durante la captura</span>
+              </span>
+              <input class="peer sr-only" type="checkbox" [ngModel]="includeMicrophone" (ngModelChange)="setMicrophone($event)" name="includeMicrophone">
+              <span aria-hidden="true" class="relative h-5 w-9 rounded-full bg-slate-200 transition peer-checked:bg-indigo-600 after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-4"></span>
+            </label>
+
+            <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-3 transition hover:bg-slate-50">
+              <span class="grid h-9 w-9 place-items-center rounded-lg bg-sky-50 text-sky-600">
+                <svg aria-hidden="true" class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 14.5v-5M8 18V6m4 15V3m4 15V6m4 8.5v-5"/>
+                </svg>
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="block text-sm font-semibold text-slate-800">Audio del sistema</span>
+                <span class="block truncate text-[11px] text-slate-400">Sonido de pestañas y apps</span>
+              </span>
+              <input class="peer sr-only" type="checkbox" [ngModel]="includeSystemAudio" (ngModelChange)="setSystemAudio($event)" name="includeSystemAudio">
+              <span aria-hidden="true" class="relative h-5 w-9 rounded-full bg-slate-200 transition peer-checked:bg-indigo-600 after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-4"></span>
+            </label>
+          </div>
+          @if (!isDesktopMode) {
+            <p class="mt-3 text-[11px] font-medium leading-4 text-emerald-700">Modo sin eco: en el navegador se graba una sola fuente de audio. Al activar una, la otra se desactiva automáticamente.</p>
+          } @else if (includeMicrophone && includeSystemAudio) {
+            <p class="mt-3 text-[11px] leading-4 text-slate-500">La voz se procesa con cancelación de eco y reducción de ruido. Para máxima separación del audio, evita que los altavoces apunten directamente al micrófono.</p>
+          }
+        </fieldset>
+
+        <div class="mt-5 flex gap-2.5 rounded-xl bg-slate-50 p-3 text-[11px] leading-4 text-slate-500">
+          <svg aria-hidden="true" class="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/>
+          </svg>
+          <span>El video permanece en tu dispositivo. Tú decides cuándo descargarlo.</span>
+        </div>
+      </aside>
+
+      <section class="order-1 overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.12)] lg:order-2">
+        @if (!(showFinalVideo$ | async)) {
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 sm:px-6">
+            <div class="flex items-center gap-3">
+              <div class="flex gap-1.5">
+                <span class="h-2.5 w-2.5 rounded-full bg-rose-400"></span>
+                <span class="h-2.5 w-2.5 rounded-full bg-amber-400"></span>
+                <span class="h-2.5 w-2.5 rounded-full bg-emerald-400"></span>
+              </div>
+              <span class="h-5 w-px bg-slate-200"></span>
+              <span class="text-xs font-semibold text-slate-500">Monitor de captura</span>
+            </div>
+            <div aria-live="polite" class="flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold"
+              [ngClass]="(isRecording$ | async) ? ((isPaused$ | async) ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-700') : 'bg-slate-100 text-slate-500'">
+              <span class="h-2 w-2 rounded-full" [ngClass]="(isRecording$ | async) ? ((isPaused$ | async) ? 'bg-amber-500' : 'recording-dot bg-rose-500') : 'bg-slate-400'"></span>
+              @if (isRecording$ | async) {
+                {{ (isPaused$ | async) ? 'En pausa' : 'Grabando' }}
+              } @else {
+                Listo para grabar
+              }
+            </div>
+          </div>
+          <div class="bg-slate-950 p-3 sm:p-5">
+            <div class="video-shell relative aspect-video overflow-hidden rounded-2xl border border-white/10 bg-[#090d18] shadow-2xl">
+              <video id="preview" class="h-full w-full object-contain" autoplay muted playsinline></video>
+              @if (!(isRecording$ | async) && !(isCountingDown$ | async)) {
+                <div class="absolute inset-0 grid place-items-center px-6 text-center">
+                  <div>
+                    <div class="mx-auto grid h-16 w-16 place-items-center rounded-2xl border border-white/10 bg-white/[0.06] text-indigo-300 shadow-2xl backdrop-blur">
+                      <svg aria-hidden="true" class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                        <rect x="2.5" y="4" width="14" height="16" rx="4"/><path d="m16.5 10 5-2.5v9l-5-2.5v-4Z"/>
+                      </svg>
+                    </div>
+                    <p class="mt-5 text-base font-semibold text-white">Tu vista previa aparecerá aquí</p>
+                    <p class="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-400">Configura la calidad y el audio, luego inicia una nueva grabación.</p>
+                  </div>
+                </div>
+              }
+              @if (isCountingDown$ | async) {
+                <div class="countdown-overlay absolute inset-0 grid place-items-center bg-slate-950/90 text-center backdrop-blur-sm">
+                  <div>
+                    <span class="countdown-number inline-grid h-28 w-28 place-items-center rounded-full border border-indigo-400/30 bg-indigo-500/10 text-6xl font-black text-white shadow-[0_0_70px_rgba(99,102,241,0.35)]">
+                      {{ countdown$ | async }}
+                    </span>
+                    <p class="mt-5 text-sm font-semibold text-indigo-200">La captura comenzará en un momento</p>
+                  </div>
+                </div>
+              }
+              @if (isRecording$ | async) {
+                <div class="absolute left-4 top-4 flex items-center gap-2 rounded-lg border border-white/10 bg-slate-950/75 px-3 py-2 text-white shadow-lg backdrop-blur">
+                  <span class="recording-dot h-2.5 w-2.5 rounded-full bg-rose-500"></span>
+                  <span class="timer-digits text-sm font-bold">{{ recordingTime$ | async }}</span>
+                </div>
+              }
+              @if ((isRecording$ | async) && (isPaused$ | async)) {
+                <div class="absolute inset-0 grid place-items-center bg-slate-950/45 backdrop-blur-[2px]">
+                  <div class="rounded-xl border border-white/10 bg-slate-950/75 px-5 py-3 text-sm font-bold text-white shadow-xl">Grabación en pausa</div>
+                </div>
+              }
+            </div>
+          </div>
+          <div class="flex min-h-24 flex-wrap items-center justify-between gap-4 border-t border-slate-100 bg-white px-5 py-5 sm:px-6">
+            <div class="hidden items-center gap-2 text-xs text-slate-400 sm:flex">
+              <kbd class="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 font-sans font-semibold text-slate-500">{{ selectedQuality }}</kbd>
+              <span>•</span>
+              <span>30 FPS</span>
+              <span>•</span>
+              <span>Formato WebM</span>
+            </div>
+            <div class="ml-auto flex w-full flex-wrap justify-center gap-2.5 sm:w-auto sm:justify-end">
+              @if (isCountingDown$ | async) {
+                <button type="button" (click)="cancelCountdown()"
+                  class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-slate-200">
+                  Cancelar
+                </button>
+              }
+              @if (!(isRecording$ | async) && !(isCountingDown$ | async)) {
+                <button type="button" (click)="startRecording()" [disabled]="!isBrowserSupported"
+                  class="inline-flex min-w-48 items-center justify-center gap-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/25 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-indigo-500/30 focus:outline-none focus:ring-4 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0">
+                  <span class="grid h-6 w-6 place-items-center rounded-lg bg-white/15">
+                    <span class="h-2.5 w-2.5 rounded-full bg-white"></span>
+                  </span>
+                  Iniciar grabación
+                </button>
+              }
+              @if ((isRecording$ | async) && !(isPaused$ | async)) {
+                <button type="button" (click)="pauseRecording()"
+                  class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-slate-200">
+                  <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6zm8 0h4v16h-4z"/></svg>
+                  Pausar
+                </button>
+              }
+              @if ((isRecording$ | async) && (isPaused$ | async)) {
+                <button type="button" (click)="resumeRecording()"
+                  class="inline-flex items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-bold text-indigo-700 transition hover:bg-indigo-100 focus:outline-none focus:ring-4 focus:ring-indigo-100">
+                  <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="m7 4 13 8-13 8V4Z"/></svg>
+                  Reanudar
+                </button>
+              }
+              @if (isRecording$ | async) {
+                <button type="button" (click)="stopRecording()"
+                  class="inline-flex items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-rose-500/20 transition hover:bg-rose-700 focus:outline-none focus:ring-4 focus:ring-rose-200">
+                  <span class="h-3 w-3 rounded-[3px] bg-white"></span>
+                  Detener
+                </button>
+              }
+            </div>
+          </div>
+        } @else {
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-5 sm:px-6">
+            <div>
+              <div class="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-emerald-600">
+                <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m5 12 4 4L19 6"/></svg>
+                Captura completada
+              </div>
+              <h2 class="text-xl font-black tracking-tight text-slate-900">Tu grabación está lista</h2>
+            </div>
+            <div class="flex items-center gap-3 text-right text-xs text-slate-400">
+              <div><span class="block font-bold text-slate-700">{{ recordingTime$ | async }}</span><span>Duración</span></div>
+              <span class="h-8 w-px bg-slate-200"></span>
+              <div><span class="block font-bold text-slate-700">{{ recordingSize$ | async }}</span><span>Tamaño</span></div>
+            </div>
+          </div>
+          <div class="bg-slate-950 p-3 sm:p-5">
+            @if (previewUrl$ | async; as videoUrl) {
+              <video [src]="videoUrl" controls
+                class="aspect-video h-auto w-full rounded-2xl border border-white/10 bg-black object-contain shadow-2xl">
+              </video>
+            }
+          </div>
+          <div class="flex flex-col gap-4 border-t border-slate-100 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <div class="text-xs leading-5 text-slate-400">
+              <p class="font-semibold text-slate-600">Grabación {{ selectedQuality }} · WebM</p>
+              <p>{{ (recordingDate$ | async) | date:'dd MMM yyyy, HH:mm' }}</p>
+            </div>
+            <div class="flex flex-col-reverse gap-2.5 sm:flex-row">
+              <button type="button" (click)="reset()"
+                class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-slate-200">
+                <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>
+                Nueva grabación
+              </button>
+              <button type="button" (click)="downloadRecording()"
+                class="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/25 transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-indigo-200">
+                <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg>
+                Descargar video
+              </button>
+            </div>
+          </div>
+        }
+
+      </section>
     </div>
 
-    <!-- INDICADOR DE GRABACIÓN -->
-    <div *ngIf="isRecording$ | async" class="text-center text-red-600 font-semibold text-lg flex items-center justify-center gap-2">
-      <span class="w-3 h-3 rounded-full bg-red-600 animate-pulse"></span>
-      Grabando... {{ recordingTime$ | async }}
-    </div>
-
-    <!-- VISTA EN TIEMPO REAL -->
-    <video
-      id="preview"
-      class="w-full border rounded-md"
-      autoplay
-      muted
-      playsinline
-      height="360"
-    ></video>
-  </div>
-
-  <!-- BOTÓN "VER VIDEO" -->
-  <div *ngIf="(showWatchButton$ | async) && !(showFinalVideo$ | async)" class="text-center mt-10">
-    <button
-      (click)="onShowFinalVideo()"
-      class="px-6 py-3 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition"
-    >
-      ▶️ Ver grabación
-    </button>
-  </div>
-
-  <!-- VISTA PREVIA FINAL -->
-  <div *ngIf="(showFinalVideo$ | async) && (previewUrl$ | async)" class="mt-6 w-full p-4 rounded-md bg-white shadow border border-gray-200">
-    <h2 class="text-lg font-semibold text-gray-700 mb-3">🎬 Vista previa de la grabación</h2>
-
-    <video
-      [src]="previewUrl$ | async"
-      controls
-      autoplay
-      class="w-full rounded-md border border-gray-300"
-    ></video>
-
-    <div class="mt-4 text-right">
-      <button
-        title="Comenzar nueva grabación"
-        (click)="reset()"
-        class="px-4 py-2 text-sm rounded-md font-medium text-gray-600 hover:bg-gray-100 transition"
-      >
-        🔄 Nueva Grabación
-      </button>
+    <div class="mt-6 grid gap-3 sm:grid-cols-3">
+      <div class="flex items-center gap-3 rounded-2xl border border-white bg-white/70 px-4 py-3 text-sm text-slate-500 shadow-sm">
+        <span class="grid h-8 w-8 place-items-center rounded-lg bg-indigo-50 text-indigo-600">
+          <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>
+        </span>
+        <span><strong class="block text-slate-700">Audio combinado</strong>Micrófono y sistema</span>
+      </div>
+      <div class="flex items-center gap-3 rounded-2xl border border-white bg-white/70 px-4 py-3 text-sm text-slate-500 shadow-sm">
+        <span class="grid h-8 w-8 place-items-center rounded-lg bg-emerald-50 text-emerald-600">
+          <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+        </span>
+        @if (isDesktopMode) {
+          <span><strong class="block text-slate-700">Pantalla completa</strong>Monitor principal automático</span>
+        } @else {
+          <span><strong class="block text-slate-700">Modo web</strong>Selección protegida por navegador</span>
+        }
+      </div>
+      <div class="flex items-center gap-3 rounded-2xl border border-white bg-white/70 px-4 py-3 text-sm text-slate-500 shadow-sm">
+        <span class="grid h-8 w-8 place-items-center rounded-lg bg-violet-50 text-violet-600">
+          <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>
+        </span>
+        <span><strong class="block text-slate-700">Privacidad primero</strong>Procesamiento en tu equipo</span>
+      </div>
     </div>
   </div>
-</div>
+</main>

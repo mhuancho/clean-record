@@ -14,6 +14,12 @@ import { Observable } from 'rxjs';
 })
 export class ScreenRecorderComponent implements OnInit {
   selectedQuality: '720p' | '1080p' = '1080p';
+  includeMicrophone = true;
+  includeSystemAudio = false;
+  readonly isDesktopMode = typeof navigator !== 'undefined' && /Electron\//.test(navigator.userAgent);
+  readonly isBrowserSupported = typeof navigator !== 'undefined'
+    && !!navigator.mediaDevices?.getDisplayMedia
+    && typeof MediaRecorder !== 'undefined';
 
   isRecording$!: Observable<boolean>;
   isPaused$!: Observable<boolean>;
@@ -21,8 +27,9 @@ export class ScreenRecorderComponent implements OnInit {
   countdown$!: Observable<number>;
   recordingTime$!: Observable<string>;
   previewUrl$!: Observable<string | null>;
-  showWatchButton$!: Observable<boolean>;
   showFinalVideo$!: Observable<boolean>;
+  recordingSize$!: Observable<string>;
+  recordingDate$!: Observable<Date | null>;
 
   constructor(
     private controller: ScreenRecorderControllerService,
@@ -36,13 +43,33 @@ export class ScreenRecorderComponent implements OnInit {
     this.countdown$ = this.controller.countdown$;
     this.recordingTime$ = this.controller.recordingTime$;
     this.previewUrl$ = this.controller.previewUrl$;
-    this.showWatchButton$ = this.controller.showWatchButton$;
     this.showFinalVideo$ = this.controller.showFinalVideo$;
+    this.recordingSize$ = this.controller.recordingSize$;
+    this.recordingDate$ = this.controller.recordingDate$;
   }
 
   startRecording() {
     const video = this.renderer.selectRootElement('#preview', true) as HTMLVideoElement;
-    this.controller.startRecording(this.selectedQuality, video, this.renderer);
+    void this.controller.startRecording({
+      quality: this.selectedQuality,
+      includeMicrophone: this.includeMicrophone,
+      includeSystemAudio: this.includeSystemAudio,
+      allowSimultaneousAudio: this.isDesktopMode
+    }, video);
+  }
+
+  setMicrophone(enabled: boolean) {
+    this.includeMicrophone = enabled;
+    if (enabled && !this.isDesktopMode) this.includeSystemAudio = false;
+  }
+
+  setSystemAudio(enabled: boolean) {
+    this.includeSystemAudio = enabled;
+    if (enabled && !this.isDesktopMode) this.includeMicrophone = false;
+  }
+
+  cancelCountdown() {
+    this.controller.cancelCountdown();
   }
 
   pauseRecording() {
@@ -61,7 +88,7 @@ export class ScreenRecorderComponent implements OnInit {
     this.controller.reset();
   }
 
-  onShowFinalVideo() {
-    this.controller.mostrarVistaFinal();
+  downloadRecording() {
+    this.controller.download(this.renderer);
   }
 }

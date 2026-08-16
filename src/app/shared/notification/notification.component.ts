@@ -28,4 +28,8 @@ export class NotificationComponent implements OnDestroy {
   ngOnDestroy() {
     this.subscription.unsubscribe();
   }
+
+  dismiss() {
+    this.notificationService.clear();
+  }
 }
