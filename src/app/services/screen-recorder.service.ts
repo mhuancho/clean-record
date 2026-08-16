@@ -16,7 +16,18 @@ type ScreenVideoConstraints = MediaTrackConstraints & {
   displaySurface?: 'monitor';
 };
 
+type ScreenAudioConstraints = MediaTrackConstraints & {
+  restrictOwnAudio?: boolean;
+  suppressLocalAudioPlayback?: boolean;
+};
+
+type ExtendedSupportedConstraints = MediaTrackSupportedConstraints & {
+  restrictOwnAudio?: boolean;
+  suppressLocalAudioPlayback?: boolean;
+};
+
 type ExtendedDisplayMediaOptions = DisplayMediaStreamOptions & {
+  audio: boolean | ScreenAudioConstraints;
   video: ScreenVideoConstraints;
   monitorTypeSurfaces?: 'include';
   preferCurrentTab?: boolean;
@@ -30,6 +41,11 @@ export class ScreenRecorderService {
   async getCombinedStream(options: RecordingOptions): Promise<RecordingMedia> {
     const includeSystemAudio = options.includeSystemAudio
       && (!options.includeMicrophone || options.allowSimultaneousAudio === true);
+    const supportedConstraints = navigator.mediaDevices.getSupportedConstraints?.() as ExtendedSupportedConstraints | undefined;
+    const systemAudioConstraints: ScreenAudioConstraints = {
+      ...(supportedConstraints?.restrictOwnAudio ? { restrictOwnAudio: true } : {}),
+      ...(supportedConstraints?.suppressLocalAudioPlayback ? { suppressLocalAudioPlayback: true } : {})
+    };
     const videoConstraints: ScreenVideoConstraints = {
       width: options.quality === '1080p' ? { ideal: 1920 } : { ideal: 1280 },
       height: options.quality === '1080p' ? { ideal: 1080 } : { ideal: 720 },
@@ -38,7 +54,7 @@ export class ScreenRecorderService {
     };
     const displayOptions: ExtendedDisplayMediaOptions = {
       video: videoConstraints,
-      audio: includeSystemAudio,
+      audio: includeSystemAudio ? systemAudioConstraints : false,
       monitorTypeSurfaces: 'include',
       preferCurrentTab: false,
       selfBrowserSurface: 'exclude',

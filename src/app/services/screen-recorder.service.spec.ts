@@ -32,14 +32,19 @@ describe('ScreenRecorderService', () => {
   let service: ScreenRecorderService;
   let getDisplayMedia: ReturnType<typeof vi.fn>;
   let getUserMedia: ReturnType<typeof vi.fn>;
+  let getSupportedConstraints: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     getDisplayMedia = vi.fn();
     getUserMedia = vi.fn();
+    getSupportedConstraints = vi.fn(() => ({
+      restrictOwnAudio: true,
+      suppressLocalAudioPlayback: true
+    }));
     vi.stubGlobal('MediaStream', FakeMediaStream);
     Object.defineProperty(navigator, 'mediaDevices', {
       configurable: true,
-      value: { getDisplayMedia, getUserMedia }
+      value: { getDisplayMedia, getUserMedia, getSupportedConstraints }
     });
 
     TestBed.configureTestingModule({});
@@ -123,6 +128,12 @@ describe('ScreenRecorderService', () => {
       allowSimultaneousAudio: true
     });
 
+    expect(getDisplayMedia).toHaveBeenCalledWith(expect.objectContaining({
+      audio: {
+        restrictOwnAudio: true,
+        suppressLocalAudioPlayback: true
+      }
+    }));
     expect(getUserMedia).toHaveBeenCalledWith({
       audio: expect.objectContaining({
         echoCancellation: { exact: true },

@@ -54,18 +54,16 @@ export class ScreenRecorderComponent implements OnInit {
       quality: this.selectedQuality,
       includeMicrophone: this.includeMicrophone,
       includeSystemAudio: this.includeSystemAudio,
-      allowSimultaneousAudio: this.isDesktopMode
+      allowSimultaneousAudio: true
     }, video);
   }
 
   setMicrophone(enabled: boolean) {
     this.includeMicrophone = enabled;
-    if (enabled && !this.isDesktopMode) this.includeSystemAudio = false;
   }
 
   setSystemAudio(enabled: boolean) {
     this.includeSystemAudio = enabled;
-    if (enabled && !this.isDesktopMode) this.includeMicrophone = false;
   }
 
   cancelCountdown() {
