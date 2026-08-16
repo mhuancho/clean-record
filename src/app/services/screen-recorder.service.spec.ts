@@ -95,9 +95,15 @@ describe('ScreenRecorderService', () => {
 
     const connect = vi.fn();
     const close = vi.fn().mockResolvedValue(undefined);
+    const getByteTimeDomainData = vi.fn((samples: Uint8Array) => samples.fill(128));
     const audioContext = {
       state: 'running',
       close,
+      createAnalyser: vi.fn(() => ({
+        fftSize: 256,
+        smoothingTimeConstant: 0,
+        getByteTimeDomainData
+      })),
       createMediaStreamDestination: vi.fn(() => ({ stream: new FakeMediaStream([outputTrack]) })),
       createMediaStreamSource: vi.fn(() => ({ connect })),
       createGain: vi.fn(() => ({ gain: { value: 0 }, connect })),
@@ -146,6 +152,7 @@ describe('ScreenRecorderService', () => {
     });
     expect(audioContext.createDynamicsCompressor).toHaveBeenCalledOnce();
     expect(audioContext.createBiquadFilter).toHaveBeenCalledOnce();
+    expect(audioContext.createAnalyser).toHaveBeenCalledTimes(2);
     expect(recording.stream.getAudioTracks()).toEqual([outputTrack]);
     expect(microphoneTrack.contentHint).toBe('speech');
     expect(outputTrack.contentHint).toBe('music');
@@ -175,10 +182,26 @@ describe('ScreenRecorderService', () => {
     expect(getUserMedia).toHaveBeenCalledOnce();
   });
 
-  it('conserva directamente la pista del micrófono cuando es la única fuente', async () => {
+  it('conserva directamente la pista del micrófono y solo usa el contexto para medirla', async () => {
     const videoTrack = createTrack('video');
     const microphoneTrack = createTrack('audio');
-    const AudioContextMock = vi.fn();
+    const connect = vi.fn();
+    const close = vi.fn().mockResolvedValue(undefined);
+    const getByteTimeDomainData = vi.fn((samples: Uint8Array) => samples.fill(128));
+    const audioContext = {
+      state: 'running',
+      close,
+      resume: vi.fn(),
+      createMediaStreamSource: vi.fn(() => ({ connect })),
+      createAnalyser: vi.fn(() => ({
+        fftSize: 256,
+        smoothingTimeConstant: 0,
+        getByteTimeDomainData
+      }))
+    };
+    const AudioContextMock = vi.fn(function () {
+      return audioContext;
+    });
     vi.stubGlobal('AudioContext', AudioContextMock);
     getDisplayMedia.mockResolvedValue(new FakeMediaStream([videoTrack]));
     getUserMedia.mockResolvedValue(new FakeMediaStream([microphoneTrack]));
@@ -186,11 +209,23 @@ describe('ScreenRecorderService', () => {
     const recording = await service.getCombinedStream({
       quality: '1080p',
       includeMicrophone: true,
-      includeSystemAudio: false
+      includeSystemAudio: false,
+      microphoneDeviceId: 'microfono-usb'
     });
 
-    expect(AudioContextMock).not.toHaveBeenCalled();
+    expect(AudioContextMock).toHaveBeenCalledOnce();
+    expect(getUserMedia).toHaveBeenCalledWith({
+      audio: expect.objectContaining({
+        deviceId: { exact: 'microfono-usb' },
+        echoCancellation: { exact: true }
+      })
+    });
     expect(recording.stream.getAudioTracks()).toEqual([microphoneTrack]);
     expect(microphoneTrack.contentHint).toBe('speech');
+    expect(recording.audioLevels?.microphone()).toBe(0);
+    expect(connect).toHaveBeenCalledOnce();
+
+    recording.cleanup();
+    expect(close).toHaveBeenCalledOnce();
   });
 });

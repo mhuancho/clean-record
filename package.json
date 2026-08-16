@@ -1,6 +1,6 @@
 {
   "name": "clean-record",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Grabador de pantalla completa con audio local",
   "author": "Mateo Huancho",
   "main": "electron/main.cjs",
@@ -9,7 +9,15 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "icons": "node scripts/generate-icons.mjs",
+    "desktop": "npm run build && electron .",
+    "desktop:dev": "electron .",
+    "desktop:package": "npm run build && npm run icons && electron-builder --win --publish never",
+    "desktop:package:dir": "npm run build && npm run icons && electron-builder --win --dir",
+    "desktop:release": "npm run build && npm run icons && node scripts/build-signed-release.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:update": "playwright test --update-snapshots"
   },
   "private": true,
   "dependencies": {
@@ -21,6 +29,7 @@
     "@angular/platform-browser-dynamic": "^22.1.2",
     "@angular/router": "^22.1.2",
     "@tailwindcss/postcss": "^4.1.11",
+    "electron-updater": "^6.8.9",
     "rxjs": "~7.8.0",
     "tailwindcss": "^4.1.11",
     "tslib": "^2.3.0",
@@ -30,19 +39,25 @@
     "@angular/build": "^22.1.4",
     "@angular/cli": "^22.1.4",
     "@angular/compiler-cli": "^22.1.2",
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.62.1",
     "electron": "^43.4.0",
     "electron-builder": "^26.15.3",
     "jsdom": "^30.0.1",
+    "png-to-ico": "^3.0.2",
     "postcss": "^8.5.3",
+    "sharp": "^0.35.3",
     "typescript": "~6.0.3",
     "vitest": "^4.0.8"
   },
   "build": {
     "appId": "com.cleanrecord.desktop",
-    "productName": "Clean Record",
+    "productName": "CleanRecord",
+    "copyright": "Copyright © 2026 Mateo Huancho",
     "asar": true,
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "build"
     },
     "files": [
       "dist/clean-record/browser/**/*",
@@ -50,12 +65,19 @@
       "package.json"
     ],
     "win": {
+      "icon": "build/icon.ico",
       "target": "nsis",
-      "artifactName": "Clean-Record-${version}-${arch}.${ext}"
+      "artifactName": "CleanRecord-Setup-${version}-${arch}.${ext}",
+      "signAndEditExecutable": true,
+      "verifyUpdateCodeSignature": true
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "CleanRecord",
+      "uninstallDisplayName": "CleanRecord"
     }
   }
 }

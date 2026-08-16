@@ -147,6 +147,10 @@ input:focus-visible + .toggle-track {
   background: #10b981;
 }
 
+.system-audio-level {
+  background: #4f46e5;
+}
+
 .button {
   display: inline-flex;
   min-height: 2.75rem;

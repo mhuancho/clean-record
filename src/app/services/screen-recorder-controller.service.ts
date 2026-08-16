@@ -2,6 +2,13 @@ import { Injectable, Renderer2 } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { RecordingOptions, ScreenRecorderService } from './screen-recorder.service';
 import { NotificationService } from './notification.service';
+import { DesktopIntegrationService } from './desktop-integration.service';
+
+export interface RecorderIssue {
+  title: string;
+  message: string;
+  action: 'retry' | 'settings' | 'dismiss';
+}
 
 @Injectable({ providedIn: 'root' })
 export class ScreenRecorderControllerService {
@@ -16,6 +23,11 @@ export class ScreenRecorderControllerService {
   private previewElement?: HTMLVideoElement;
   private captureAttempt = 0;
   private recordingFileName = 'grabacion';
+  private audioLevelInterval?: ReturnType<typeof setInterval>;
+  private desktopSessionId?: string;
+  private desktopEntryId?: string;
+  private desktopChunkChain: Promise<void> = Promise.resolve();
+  private audioLevels?: { microphone: () => number; system: () => number };
 
   isRecording$ = new BehaviorSubject(false);
   isPaused$ = new BehaviorSubject(false);
@@ -31,10 +43,15 @@ export class ScreenRecorderControllerService {
   captureResolution$ = new BehaviorSubject('Pendiente');
   captureFrameRate$ = new BehaviorSubject('30 FPS objetivo');
   capturedAudio$ = new BehaviorSubject('Sin verificar');
+  microphoneLevel$ = new BehaviorSubject(0);
+  systemAudioLevel$ = new BehaviorSubject(0);
+  recorderIssue$ = new BehaviorSubject<RecorderIssue | null>(null);
+  savedRecording$ = new BehaviorSubject<DesktopRecordingEntry | null>(null);
 
   constructor(
     private recorderService: ScreenRecorderService,
-    private notificationService: NotificationService
+    private notificationService: NotificationService,
+    private desktopIntegration: DesktopIntegrationService
   ) { }
 
   startTimer() {
@@ -69,6 +86,9 @@ export class ScreenRecorderControllerService {
     this.showFinalVideo$.next(false);
     this.recordingSize$.next('0 MB');
     this.recordingDate$.next(null);
+    this.savedRecording$.next(null);
+    this.desktopEntryId = undefined;
+    this.recorderIssue$.next(null);
     this.captureResolution$.next('Detectando…');
     this.captureFrameRate$.next('Detectando…');
     this.capturedAudio$.next('Verificando…');
@@ -87,12 +107,21 @@ export class ScreenRecorderControllerService {
       }
 
       const stream = media.stream;
-      this.cleanupMedia = media.cleanup;
+      this.cleanupMedia = () => {
+        this.stopAudioMonitoring();
+        media.cleanup();
+      };
       this.previewElement = videoElement;
       this.updateCaptureDetails(media);
+      this.startAudioMonitoring(media.audioLevels);
 
       if ((options.includeMicrophone || options.includeSystemAudio) && stream.getAudioTracks().length === 0) {
         this.notificationService.warning('La grabación continuará sin audio porque no se detectó ninguna fuente.');
+        this.recorderIssue$.next({
+          title: 'No se detectó señal de audio',
+          message: 'Puedes continuar sin audio o revisar los permisos y dispositivos del sistema.',
+          action: this.desktopIntegration.isDesktop ? 'settings' : 'dismiss'
+        });
       }
 
       // La vista previa es únicamente visual. Forzar silencio por propiedad evita
@@ -154,17 +183,24 @@ export class ScreenRecorderControllerService {
       if (this.countdownInterval) clearInterval(this.countdownInterval);
       this.countdownInterval = undefined;
       this.isCountingDown$.next(false);
-      this.startMediaRecording(options, videoElement, stream);
+      void this.startMediaRecording(options, videoElement, stream);
     }, 1000);
   }
 
-  private startMediaRecording(
+  private async startMediaRecording(
     options: RecordingOptions,
     videoElement: HTMLVideoElement,
     stream: MediaStream
-  ) {
+  ): Promise<void> {
     try {
+      this.isPreparing$.next(true);
       const mimeType = this.getSupportedMimeType();
+      const desktopSession = await this.desktopIntegration.startRecordingSession({
+        mimeType: mimeType || 'video/webm',
+        quality: options.quality
+      });
+      this.desktopSessionId = desktopSession?.sessionId;
+      this.desktopChunkChain = Promise.resolve();
       this.mediaRecorder = new MediaRecorder(stream, {
         ...(mimeType ? { mimeType } : {}),
         videoBitsPerSecond: options.quality === '1080p' ? 5_000_000 : 3_000_000,
@@ -174,38 +210,45 @@ export class ScreenRecorderControllerService {
       this.recordedChunks = [];
 
       this.mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
+        if (e.data.size === 0) return;
+        if (this.desktopSessionId) {
+          const sessionId = this.desktopSessionId;
+          this.desktopChunkChain = this.desktopChunkChain.then(async () => {
+            const chunk = await e.data.arrayBuffer();
+            const result = await this.desktopIntegration.appendRecordingChunk(sessionId, chunk);
+            this.recordingSize$.next(this.formatFileSize(result.bytesWritten));
+          });
+          void this.desktopChunkChain.catch(error => {
+            console.error('No fue posible escribir un fragmento de la grabación:', error);
+            this.recorderIssue$.next({
+              title: 'Problema al guardar la grabación',
+              message: 'No se pudo escribir un fragmento. Detén la captura para intentar recuperar lo guardado.',
+              action: 'dismiss'
+            });
+          });
+        } else {
           this.recordedChunks.push(e.data);
         }
       };
 
       this.mediaRecorder.onstop = () => {
-        this.stopTimer();
-        this.cleanupMedia?.();
-        this.cleanupMedia = undefined;
-        videoElement.srcObject = null;
-        this.previewElement = undefined;
-
-        const blob = new Blob(this.recordedChunks, { type: mimeType || 'video/webm' });
-        const url = URL.createObjectURL(blob);
-        this.previewUrl$.next(url);
-
-        const date = new Date();
-        this.recordingDate$.next(date);
-        this.recordingSize$.next(this.formatFileSize(blob.size));
-        this.recordingFileName = `grabacion-${date.toISOString().replace(/[:.]/g, '-')}`;
-        this.recordingFileName$.next(this.recordingFileName);
-        this.showFinalVideo$.next(true);
+        void this.finalizeRecording(videoElement, mimeType);
       };
 
-      this.mediaRecorder.start();
+      this.mediaRecorder.start(1000);
+      this.isPreparing$.next(false);
       this.isRecording$.next(true);
       this.isPaused$.next(false);
       this.startTimer();
       this.notificationService.success('Grabación iniciada correctamente.');
 
     } catch (error: unknown) {
+      this.isPreparing$.next(false);
       this.handleStartError(error);
+      if (this.desktopSessionId) {
+        void this.desktopIntegration.abandonRecordingSession(this.desktopSessionId);
+        this.desktopSessionId = undefined;
+      }
       this.cleanupMedia?.();
       this.cleanupMedia = undefined;
       videoElement.srcObject = null;
@@ -213,16 +256,88 @@ export class ScreenRecorderControllerService {
     }
   }
 
+  private async finalizeRecording(videoElement: HTMLVideoElement, mimeType: string): Promise<void> {
+    this.stopTimer();
+    this.cleanupMedia?.();
+    this.cleanupMedia = undefined;
+    videoElement.srcObject = null;
+    this.previewElement = undefined;
+
+    const date = new Date();
+    this.recordingDate$.next(date);
+    this.recordingFileName = `grabacion-${date.toISOString().replace(/[:.]/g, '-')}`;
+    this.recordingFileName$.next(this.recordingFileName);
+
+    try {
+      if (this.desktopSessionId) {
+        const sessionId = this.desktopSessionId;
+        await this.desktopChunkChain;
+        const entry = await this.desktopIntegration.finishRecordingSession(sessionId, {
+          name: this.recordingFileName,
+          duration: this.recordingTime$.value,
+          resolution: this.captureResolution$.value,
+          frameRate: this.captureFrameRate$.value,
+          audio: this.capturedAudio$.value
+        });
+        this.desktopSessionId = undefined;
+        if (!entry) throw new Error('No fue posible registrar el archivo de escritorio.');
+        this.desktopEntryId = entry.id;
+        this.savedRecording$.next(entry);
+        this.previewUrl$.next(entry.previewUrl);
+        this.recordingSize$.next(this.formatFileSize(entry.size));
+      } else {
+        const blob = new Blob(this.recordedChunks, { type: mimeType || 'video/webm' });
+        this.previewUrl$.next(URL.createObjectURL(blob));
+        this.recordingSize$.next(this.formatFileSize(blob.size));
+      }
+      this.showFinalVideo$.next(true);
+      this.notificationService.success('Grabación lista para revisar y guardar.');
+    } catch (error) {
+      console.error('No fue posible finalizar la grabación:', error);
+      if (this.desktopSessionId) {
+        await this.desktopIntegration.abandonRecordingSession(this.desktopSessionId);
+        this.desktopSessionId = undefined;
+      }
+      this.recorderIssue$.next({
+        title: 'La grabación necesita recuperación',
+        message: 'No se pudo cerrar normalmente, pero los fragmentos guardados permanecen en el historial de recuperación.',
+        action: 'dismiss'
+      });
+      this.notificationService.error('No se pudo finalizar normalmente. Revisa el historial de recuperación.');
+      await this.desktopIntegration.refreshHistory();
+    }
+  }
+
   private handleStartError(error: unknown) {
     const err = error as DOMException;
     if (err.name === 'NotAllowedError') {
       this.notificationService.error('Permiso denegado para acceder a la pantalla o al micrófono.');
+      this.recorderIssue$.next({
+        title: 'Permiso de captura denegado',
+        message: 'Autoriza el micrófono y la captura de pantalla en la configuración del sistema, luego vuelve a intentarlo.',
+        action: this.desktopIntegration.isDesktop ? 'settings' : 'retry'
+      });
     } else if (err.name === 'NotFoundError') {
       this.notificationService.error('No se encontró una pantalla o un micrófono disponible.');
+      this.recorderIssue$.next({
+        title: 'Dispositivo no disponible',
+        message: 'Conecta o selecciona otro micrófono y vuelve a iniciar la captura.',
+        action: 'retry'
+      });
     } else if (err.name === 'InvalidStateError') {
       this.notificationService.error('Inicia la grabación directamente desde el botón de la aplicación.');
+      this.recorderIssue$.next({
+        title: 'La captura necesita una acción directa',
+        message: 'Vuelve a utilizar el botón Iniciar grabación.',
+        action: 'retry'
+      });
     } else {
       this.notificationService.error(`No fue posible iniciar la grabación: ${err.message || 'error desconocido'}`);
+      this.recorderIssue$.next({
+        title: 'No se pudo iniciar la grabación',
+        message: err.message || 'Ocurrió un error inesperado al preparar la captura.',
+        action: 'retry'
+      });
     }
     console.error('Error al iniciar la grabación:', err);
   }
@@ -251,13 +366,27 @@ export class ScreenRecorderControllerService {
       this.mediaRecorder.stop();
       this.isRecording$.next(false);
       this.isPaused$.next(false);
-      this.notificationService.success('Grabación lista para revisar y descargar.');
+      this.notificationService.info('Finalizando y verificando la grabación…');
     }
   }
 
-  download(renderer: Renderer2) {
+  async download(renderer: Renderer2): Promise<void> {
     const url = this.previewUrl$.value;
     if (!url) return;
+
+    if (this.desktopEntryId) {
+      try {
+        const entry = await this.desktopIntegration.saveRecording(this.desktopEntryId, this.recordingFileName);
+        if (!entry) return;
+        this.savedRecording$.next(entry);
+        this.previewUrl$.next(entry.previewUrl);
+        this.notificationService.success('Grabación guardada correctamente.');
+      } catch (error) {
+        console.error('No fue posible guardar la grabación:', error);
+        this.notificationService.error('No fue posible guardar el archivo en la ubicación seleccionada.');
+      }
+      return;
+    }
 
     const link = renderer.createElement('a');
     renderer.setAttribute(link, 'href', url);
@@ -272,10 +401,32 @@ export class ScreenRecorderControllerService {
     this.notificationService.success('Descarga iniciada.');
   }
 
+  async openSavedRecordingFolder(): Promise<void> {
+    if (!this.desktopEntryId) return;
+    await this.desktopIntegration.showRecordingInFolder(this.desktopEntryId);
+  }
+
+  async openMediaSettings(): Promise<void> {
+    await this.desktopIntegration.openMediaSettings();
+  }
+
+  dismissIssue(): void {
+    this.recorderIssue$.next(null);
+  }
+
+  hasUnsavedRecording(): boolean {
+    return this.showFinalVideo$.value && !this.savedRecording$.value?.saved;
+  }
+
   reset() {
     this.cancelCountdown();
     this.cleanupMedia?.();
     this.cleanupMedia = undefined;
+    if (this.desktopSessionId) {
+      void this.desktopIntegration.abandonRecordingSession(this.desktopSessionId);
+      this.desktopSessionId = undefined;
+    }
+    this.stopAudioMonitoring();
     this.releasePreviewUrl();
     this.previewUrl$.next(null);
     this.isRecording$.next(false);
@@ -283,11 +434,14 @@ export class ScreenRecorderControllerService {
     this.showFinalVideo$.next(false);
     this.recordingSize$.next('0 MB');
     this.recordingDate$.next(null);
+    this.savedRecording$.next(null);
+    this.desktopEntryId = undefined;
     this.recordingFileName = 'grabacion';
     this.recordingFileName$.next(this.recordingFileName);
     this.captureResolution$.next('Pendiente');
     this.captureFrameRate$.next('30 FPS objetivo');
     this.capturedAudio$.next('Sin verificar');
+    this.recorderIssue$.next(null);
     this.stopTimer(true);
   }
 
@@ -312,9 +466,30 @@ export class ScreenRecorderControllerService {
     ];
     this.capturedAudio$.next(audioSources.length > 0 ? audioSources.join(' + ') : 'Sin audio');
   }
+
+  private startAudioMonitoring(levels?: { microphone: () => number; system: () => number }): void {
+    this.stopAudioMonitoring();
+    this.audioLevels = levels;
+    if (!levels) return;
+    const update = () => {
+      this.microphoneLevel$.next(levels.microphone());
+      this.systemAudioLevel$.next(levels.system());
+    };
+    update();
+    this.audioLevelInterval = setInterval(update, 120);
+  }
+
+  private stopAudioMonitoring(): void {
+    if (this.audioLevelInterval) clearInterval(this.audioLevelInterval);
+    this.audioLevelInterval = undefined;
+    this.audioLevels = undefined;
+    this.microphoneLevel$.next(0);
+    this.systemAudioLevel$.next(0);
+  }
+
   private releasePreviewUrl() {
     const currentUrl = this.previewUrl$.value;
-    if (currentUrl) URL.revokeObjectURL(currentUrl);
+    if (currentUrl?.startsWith('blob:')) URL.revokeObjectURL(currentUrl);
   }
 
   private getSupportedMimeType(): string {
@@ -327,6 +502,7 @@ export class ScreenRecorderControllerService {
   }
 
   private formatFileSize(bytes: number): string {
+    if (bytes < 1_000) return `${bytes} B`;
     if (bytes < 1_000_000) return `${(bytes / 1_000).toFixed(0)} KB`;
     return `${(bytes / 1_000_000).toFixed(1)} MB`;
   }

@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 
+import { DesktopIntegrationService } from './desktop-integration.service';
 import { NotificationService } from './notification.service';
 import { ScreenRecorderControllerService } from './screen-recorder-controller.service';
 import { type RecordingMedia, ScreenRecorderService } from './screen-recorder.service';
@@ -27,6 +28,17 @@ describe('ScreenRecorderControllerService', () => {
   let combinedMedia: RecordingMedia;
   let videoElement: HTMLVideoElement;
   let mediaDevicesDescriptor: PropertyDescriptor | undefined;
+  let desktopIntegration: {
+    isDesktop: boolean;
+    startRecordingSession: ReturnType<typeof vi.fn>;
+    appendRecordingChunk: ReturnType<typeof vi.fn>;
+    finishRecordingSession: ReturnType<typeof vi.fn>;
+    abandonRecordingSession: ReturnType<typeof vi.fn>;
+    refreshHistory: ReturnType<typeof vi.fn>;
+    saveRecording: ReturnType<typeof vi.fn>;
+    showRecordingInFolder: ReturnType<typeof vi.fn>;
+    openMediaSettings: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -75,12 +87,24 @@ describe('ScreenRecorderControllerService', () => {
       warning: vi.fn(),
       info: vi.fn()
     };
+    desktopIntegration = {
+      isDesktop: false,
+      startRecordingSession: vi.fn().mockResolvedValue(undefined),
+      appendRecordingChunk: vi.fn().mockResolvedValue({ bytesWritten: 8 }),
+      finishRecordingSession: vi.fn(),
+      abandonRecordingSession: vi.fn().mockResolvedValue(undefined),
+      refreshHistory: vi.fn().mockResolvedValue(undefined),
+      saveRecording: vi.fn(),
+      showRecordingInFolder: vi.fn().mockResolvedValue(undefined),
+      openMediaSettings: vi.fn().mockResolvedValue(undefined)
+    };
 
     TestBed.configureTestingModule({
       providers: [
         ScreenRecorderControllerService,
         { provide: ScreenRecorderService, useValue: { getCombinedStream } },
-        { provide: NotificationService, useValue: notificationService }
+        { provide: NotificationService, useValue: notificationService },
+        { provide: DesktopIntegrationService, useValue: desktopIntegration }
       ]
     });
     service = TestBed.inject(ScreenRecorderControllerService);
@@ -167,5 +191,43 @@ describe('ScreenRecorderControllerService', () => {
     service.updateRecordingFileName('  demo:final.webm  ');
 
     expect(service.recordingFileName$.value).toBe('demo-final');
+  });
+
+  it('envía fragmentos progresivamente a Electron y finaliza el archivo recuperable', async () => {
+    const desktopEntry: DesktopRecordingEntry = {
+      id: 'session-1',
+      name: 'grabacion.webm',
+      createdAt: new Date().toISOString(),
+      duration: '00:01',
+      size: 8,
+      resolution: '1920 × 1080',
+      frameRate: '30 FPS',
+      audio: 'Micrófono + Sistema',
+      recovered: false,
+      saved: false,
+      previewUrl: 'cleanrecord-media://recording/session-1'
+    };
+    desktopIntegration.isDesktop = true;
+    desktopIntegration.startRecordingSession.mockResolvedValue({ sessionId: 'session-1' });
+    desktopIntegration.finishRecordingSession.mockResolvedValue(desktopEntry);
+
+    await service.startRecording({
+      quality: '1080p',
+      includeMicrophone: true,
+      includeSystemAudio: true
+    }, videoElement);
+    await vi.advanceTimersByTimeAsync(3_000);
+
+    const recorder = MediaRecorderMock.instances[0];
+    recorder.ondataavailable?.({ data: new Blob(['fragmento']) } as BlobEvent);
+    await vi.waitFor(() => expect(desktopIntegration.appendRecordingChunk).toHaveBeenCalledOnce());
+
+    service.stop();
+    recorder.onstop?.();
+    await vi.waitFor(() => expect(desktopIntegration.finishRecordingSession).toHaveBeenCalledOnce());
+
+    expect(service.previewUrl$.value).toBe(desktopEntry.previewUrl);
+    expect(service.showFinalVideo$.value).toBe(true);
+    expect(service.recordingSize$.value).toBe('8 B');
   });
 });

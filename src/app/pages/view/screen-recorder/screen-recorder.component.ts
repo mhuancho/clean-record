@@ -1,9 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, Renderer2 } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostListener, OnDestroy, OnInit, Renderer2 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { DesktopIntegrationService } from '@services/desktop-integration.service';
 import { NotificationService } from '@services/notification.service';
-import { ScreenRecorderControllerService } from '@services/screen-recorder-controller.service';
-import { Observable } from 'rxjs';
+import { RecorderIssue, ScreenRecorderControllerService } from '@services/screen-recorder-controller.service';
+import { combineLatest, Observable, Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-screen-recorder',
@@ -17,6 +18,14 @@ export class ScreenRecorderComponent implements OnInit, OnDestroy {
   selectedQuality: '720p' | '1080p' = '1080p';
   includeMicrophone = true;
   includeSystemAudio = true;
+  selectedMicrophoneId = '';
+  microphones: MediaDeviceInfo[] = [];
+  showAbout = false;
+  shortcutDraft: DesktopShortcutSettings = {
+    toggle: 'CommandOrControl+Shift+R',
+    pause: 'CommandOrControl+Shift+P',
+    stop: 'CommandOrControl+Shift+X'
+  };
   readonly isDesktopMode = typeof navigator !== 'undefined' && /Electron\//.test(navigator.userAgent);
   readonly isBrowserSupported = typeof navigator !== 'undefined'
     && !!navigator.mediaDevices?.getDisplayMedia
@@ -36,6 +45,13 @@ export class ScreenRecorderComponent implements OnInit, OnDestroy {
   captureResolution$!: Observable<string>;
   captureFrameRate$!: Observable<string>;
   capturedAudio$!: Observable<string>;
+  microphoneCaptureLevel$!: Observable<number>;
+  systemAudioLevel$!: Observable<number>;
+  recorderIssue$!: Observable<RecorderIssue | null>;
+  savedRecording$!: Observable<DesktopRecordingEntry | null>;
+  readonly history$: Observable<DesktopRecordingEntry[]>;
+  readonly appInfo$: Observable<DesktopAppInfo>;
+  readonly updateState$: Observable<DesktopUpdateState>;
 
   isTestingMicrophone = false;
   microphoneLevel = 0;
@@ -44,13 +60,23 @@ export class ScreenRecorderComponent implements OnInit, OnDestroy {
   private microphoneTestContext?: AudioContext;
   private microphoneAnimationFrame?: number;
   private isDestroyed = false;
+  private readonly subscriptions = new Subscription();
+  private removeDesktopCommandListener?: () => void;
+  private readonly handleDeviceChange = () => {
+    void this.loadMicrophones();
+  };
 
   constructor(
     private controller: ScreenRecorderControllerService,
     private renderer: Renderer2,
     private cdr: ChangeDetectorRef,
-    private notificationService: NotificationService
-  ) { }
+    private notificationService: NotificationService,
+    readonly desktopIntegration: DesktopIntegrationService
+  ) {
+    this.history$ = desktopIntegration.history$;
+    this.appInfo$ = desktopIntegration.appInfo$;
+    this.updateState$ = desktopIntegration.updateState$;
+  }
 
   ngOnInit(): void {
     this.isRecording$ = this.controller.isRecording$;
@@ -67,11 +93,72 @@ export class ScreenRecorderComponent implements OnInit, OnDestroy {
     this.captureResolution$ = this.controller.captureResolution$;
     this.captureFrameRate$ = this.controller.captureFrameRate$;
     this.capturedAudio$ = this.controller.capturedAudio$;
+    this.microphoneCaptureLevel$ = this.controller.microphoneLevel$;
+    this.systemAudioLevel$ = this.controller.systemAudioLevel$;
+    this.recorderIssue$ = this.controller.recorderIssue$;
+    this.savedRecording$ = this.controller.savedRecording$;
+
+    this.restorePreferences();
+    void this.loadMicrophones();
+    navigator.mediaDevices?.addEventListener?.('devicechange', this.handleDeviceChange);
+
+    this.subscriptions.add(this.desktopIntegration.settings$.subscribe(settings => {
+      this.shortcutDraft = { ...settings.shortcuts };
+      this.cdr.markForCheck();
+    }));
+    this.subscriptions.add(combineLatest([
+      this.controller.isRecording$,
+      this.controller.isPaused$,
+      this.controller.recordingTime$,
+      this.controller.capturedAudio$,
+      this.controller.microphoneLevel$,
+      this.controller.systemAudioLevel$,
+      this.controller.showFinalVideo$,
+      this.controller.savedRecording$
+    ]).subscribe(([isRecording, isPaused, time, audioLabel, microphoneLevel, systemAudioLevel, showFinalVideo, savedRecording]) => {
+      this.desktopIntegration.updateRecorderState({
+        isRecording,
+        isPaused,
+        time,
+        audioLabel,
+        microphoneLevel,
+        systemAudioLevel,
+        hasUnsavedRecording: showFinalVideo && !savedRecording?.saved
+      });
+    }));
+    this.removeDesktopCommandListener = this.desktopIntegration.onRecorderCommand(command => {
+      if (command === 'toggle-recording') {
+        if (this.controller.isRecording$.value) this.stopRecording();
+        else this.startRecording();
+      } else if (command === 'pause') {
+        this.pauseRecording();
+      } else if (command === 'resume') {
+        this.resumeRecording();
+      } else if (command === 'stop') {
+        this.stopRecording();
+      }
+    });
   }
 
   ngOnDestroy(): void {
     this.isDestroyed = true;
     this.stopMicrophoneTest();
+    navigator.mediaDevices?.removeEventListener?.('devicechange', this.handleDeviceChange);
+    this.removeDesktopCommandListener?.();
+    this.subscriptions.unsubscribe();
+  }
+
+  @HostListener('window:beforeunload', ['$event'])
+  protectUnsavedRecording(event: BeforeUnloadEvent) {
+    if (this.desktopIntegration.isDesktop) return;
+    if (!this.controller.hasUnsavedRecording() && !this.controller.isRecording$.value) return;
+    event.preventDefault();
+    event.returnValue = '';
+  }
+
+  @HostListener('document:keydown.escape')
+  closePreferences() {
+    this.showAbout = false;
   }
 
   startRecording() {
@@ -81,17 +168,32 @@ export class ScreenRecorderComponent implements OnInit, OnDestroy {
       quality: this.selectedQuality,
       includeMicrophone: this.includeMicrophone,
       includeSystemAudio: this.includeSystemAudio,
-      allowSimultaneousAudio: true
+      allowSimultaneousAudio: true,
+      microphoneDeviceId: this.selectedMicrophoneId || undefined
     }, video);
+  }
+
+  setQuality(quality: '720p' | '1080p') {
+    this.selectedQuality = quality;
+    this.persistPreferences();
   }
 
   setMicrophone(enabled: boolean) {
     this.includeMicrophone = enabled;
     if (!enabled) this.stopMicrophoneTest();
+    this.persistPreferences();
   }
 
   setSystemAudio(enabled: boolean) {
     this.includeSystemAudio = enabled;
+    this.persistPreferences();
+  }
+
+  setMicrophoneDevice(deviceId: string) {
+    this.selectedMicrophoneId = deviceId;
+    this.microphoneName = this.microphones.find(device => device.deviceId === deviceId)?.label || 'Micrófono predeterminado';
+    if (this.isTestingMicrophone) this.stopMicrophoneTest();
+    this.persistPreferences();
   }
 
   async toggleMicrophoneTest() {
@@ -103,6 +205,7 @@ export class ScreenRecorderComponent implements OnInit, OnDestroy {
     try {
       this.microphoneTestStream = await navigator.mediaDevices.getUserMedia({
         audio: {
+          ...(this.selectedMicrophoneId ? { deviceId: { exact: this.selectedMicrophoneId } } : {}),
           echoCancellation: { exact: true },
           noiseSuppression: { ideal: true },
           autoGainControl: { ideal: true },
@@ -116,6 +219,7 @@ export class ScreenRecorderComponent implements OnInit, OnDestroy {
       }
       const track = this.microphoneTestStream.getAudioTracks()[0];
       this.microphoneName = track?.label || 'Micrófono predeterminado';
+      await this.loadMicrophones();
       this.microphoneTestContext = new AudioContext({ latencyHint: 'interactive' });
       const analyser = this.microphoneTestContext.createAnalyser();
       analyser.fftSize = 256;
@@ -179,10 +283,128 @@ export class ScreenRecorderComponent implements OnInit, OnDestroy {
   }
 
   downloadRecording() {
-    this.controller.download(this.renderer);
+    void this.controller.download(this.renderer);
   }
 
   renameRecording(value: string) {
     this.controller.updateRecordingFileName(value);
+  }
+
+  handleIssueAction(issue: RecorderIssue) {
+    if (issue.action === 'settings') {
+      void this.controller.openMediaSettings();
+      return;
+    }
+    this.controller.dismissIssue();
+    if (issue.action === 'retry') this.startRecording();
+  }
+
+  openSavedFolder() {
+    void this.controller.openSavedRecordingFolder();
+  }
+
+  async saveShortcuts() {
+    const result = await this.desktopIntegration.updateShortcuts(this.shortcutDraft);
+    if (result.ok) {
+      this.notificationService.success('Atajos actualizados.');
+    } else {
+      this.notificationService.error(result.message || 'No fue posible actualizar los atajos.');
+    }
+  }
+
+  async setAutoSave(enabled: boolean) {
+    try {
+      await this.desktopIntegration.updateAutoSave(enabled);
+      this.notificationService.success(enabled
+        ? 'Guardado automático activado.'
+        : 'Guardado automático desactivado.');
+    } catch (error) {
+      console.error('No fue posible actualizar el guardado automático:', error);
+      this.notificationService.error('No fue posible actualizar el guardado automático.');
+    }
+  }
+
+  openHistoryRecording(id: string) {
+    void this.desktopIntegration.openRecording(id).catch(error => {
+      console.error('No fue posible abrir la grabación:', error);
+      this.notificationService.error('No fue posible abrir la grabación.');
+    });
+  }
+
+  showHistoryRecording(id: string) {
+    void this.desktopIntegration.showRecordingInFolder(id);
+  }
+
+  removeHistoryEntry(id: string, deleteFile: boolean) {
+    if (deleteFile && !window.confirm('El archivo se moverá a la Papelera. ¿Deseas continuar?')) return;
+    void this.desktopIntegration.removeHistoryEntry(id, deleteFile).then(() => {
+      this.notificationService.success(deleteFile ? 'Archivo movido a la Papelera.' : 'Entrada eliminada del historial.');
+    }).catch(error => {
+      console.error('No fue posible actualizar el historial:', error);
+      this.notificationService.error('No fue posible actualizar el historial.');
+    });
+  }
+
+  checkForUpdates() {
+    void this.desktopIntegration.checkForUpdates();
+  }
+
+  downloadUpdate() {
+    void this.desktopIntegration.downloadUpdate();
+  }
+
+  installUpdate() {
+    void this.desktopIntegration.installUpdate();
+  }
+
+  formatHistorySize(bytes: number): string {
+    if (bytes < 1_000) return `${bytes} B`;
+    if (bytes < 1_000_000) return `${Math.round(bytes / 1_000)} KB`;
+    return `${(bytes / 1_000_000).toFixed(1)} MB`;
+  }
+
+  private restorePreferences() {
+    try {
+      const stored = localStorage.getItem('cleanrecord.preferences');
+      if (!stored) return;
+      const preferences = JSON.parse(stored) as Partial<{
+        quality: '720p' | '1080p';
+        includeMicrophone: boolean;
+        includeSystemAudio: boolean;
+        microphoneDeviceId: string;
+      }>;
+      if (preferences.quality === '720p' || preferences.quality === '1080p') this.selectedQuality = preferences.quality;
+      if (typeof preferences.includeMicrophone === 'boolean') this.includeMicrophone = preferences.includeMicrophone;
+      if (typeof preferences.includeSystemAudio === 'boolean') this.includeSystemAudio = preferences.includeSystemAudio;
+      if (typeof preferences.microphoneDeviceId === 'string') this.selectedMicrophoneId = preferences.microphoneDeviceId;
+    } catch (error) {
+      console.warn('No fue posible restaurar las preferencias:', error);
+    }
+  }
+
+  private persistPreferences() {
+    localStorage.setItem('cleanrecord.preferences', JSON.stringify({
+      quality: this.selectedQuality,
+      includeMicrophone: this.includeMicrophone,
+      includeSystemAudio: this.includeSystemAudio,
+      microphoneDeviceId: this.selectedMicrophoneId
+    }));
+  }
+
+  private async loadMicrophones() {
+    if (!navigator.mediaDevices?.enumerateDevices) return;
+    try {
+      this.microphones = (await navigator.mediaDevices.enumerateDevices())
+        .filter(device => device.kind === 'audioinput');
+      if (this.selectedMicrophoneId && !this.microphones.some(device => device.deviceId === this.selectedMicrophoneId)) {
+        this.selectedMicrophoneId = '';
+        this.persistPreferences();
+      }
+      const selected = this.microphones.find(device => device.deviceId === this.selectedMicrophoneId);
+      this.microphoneName = selected?.label || this.microphones[0]?.label || 'Micrófono predeterminado';
+      this.cdr.markForCheck();
+    } catch (error) {
+      console.warn('No fue posible enumerar los micrófonos:', error);
+    }
   }
 }

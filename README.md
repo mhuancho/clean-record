@@ -1,67 +1,140 @@
-# 🎥 Clean Record - Grabador de pantalla Angular + Electron
-Aplicación Angular 22 que graba la pantalla con audio del sistema y micrófono, genera un video `.webm`, muestra una vista previa y permite descargarlo localmente. La versión Electron captura automáticamente todo el monitor principal sin mostrar el selector de pantalla del navegador.
+# CleanRecord
 
-## 🚀 Características
+Grabador de pantalla local construido con Angular 22 y Electron 43. Captura el monitor principal, el micrófono y el audio del sistema, permite pausar, recuperar sesiones interrumpidas y guardar el resultado como WebM.
 
-- 🧼 Arquitectura limpia y desacoplada (servicios, controladores, componentes standalone)
-- ✅ Countdown antes de iniciar grabación
-- 🎙️ Captura audio de sistema + micrófono con cancelación de eco, reducción de ruido y mezcla limitada
-- 🖥️ Captura automática del monitor principal en el modo escritorio
-- 📽️ Descarga local del video grabado (`MediaRecorder`)
-- 👀 Vista previa integrada post grabación
-- 🛠️ Notificaciones personalizadas (`NotificationService`)
-- ⚙️ Selector de calidad (720p / 1080p)
-- ♻️ Grabación reactiva (`BehaviorSubject`) y `ChangeDetectionStrategy.OnPush`
+## Capacidades
 
-## Ejecución
+- Captura automática del monitor principal en Electron.
+- Micrófono y audio del sistema simultáneos, con cancelación de eco y limitador.
+- Selector y prueba de micrófono.
+- Medidores independientes para micrófono y sistema.
+- Cuenta regresiva, pausa y reanudación.
+- Controlador flotante protegido de la captura.
+- Atajos globales configurables.
+- Escritura de fragmentos a disco cada segundo en Electron.
+- Historial local y recuperación después de cierres inesperados.
+- Guardado mediante el diálogo nativo de Windows.
+- Pruebas unitarias, E2E, visuales responsive y auditoría WCAG.
+- Instalador NSIS, icono multirresolución y canal de actualizaciones configurable.
 
-```powershell
-npm install
-npm run desktop
-```
+La vista previa siempre está silenciada. Las pistas analizadas por los medidores nunca se conectan a los altavoces.
 
-`npm run desktop` compila Angular y abre la aplicación Electron. En Windows, al iniciar la grabación se selecciona el monitor principal y el audio de sistema automáticamente, sin el diálogo de “compartir pantalla”. El sistema operativo todavía puede solicitar una autorización propia para el micrófono o la captura, especialmente la primera vez.
+## Desarrollo
 
-El modo web continúa disponible con `npm start`, pero Chrome, Edge y Firefox obligan a elegir la superficie que se desea capturar. Ese selector no se puede omitir desde una página web.
+Instalar dependencias:
 
-Para generar el instalador de Windows:
+    npm install
+    npx playwright install chromium
 
-```powershell
-npm run desktop:package
-```
+Ejecutar el modo web:
 
-- ## 📦 Estructura
--  src/
-- ├── app/
-- │ ├── screen-recorder/
-- │ ├── services/
-- │ │ ├── screen-recorder-controller.service.ts
-- │ │ ├── screen-recorder.service.ts
-- │ │ └── notification.service.ts
-- │ ├── shared/
-- │ │ └── notification/
-- │ └── interceptors/
-- │ └── global-error.interceptor.ts
+    npm run start
 
-📄 Buenas prácticas aplicadas
-- ✅ Componentes standalone en Angular 19
-- ✅ Separación de responsabilidades (ControllerService, UI, RecorderService)
-- ✅ Interceptor global de errores HTTP (GlobalErrorInterceptor)
-- ✅ Tipado fuerte con TypeScript (AppNotification, NotificationType)
-- ✅ Evita uso excesivo de NgZone/detectChanges() innecesario
-- ✅ Animaciones y estilos limpios con Tailwind CSS
-- ✅ Uso de Renderer2 para manipular DOM de forma segura
+Compilar Angular y abrir Electron:
 
-💻 Tecnologías
+    npm run desktop
+
+Abrir Electron usando una compilación existente:
+
+    npm run desktop:dev
+
+En navegador, Chrome, Edge y Firefox siempre muestran el selector de superficie. Solo Electron puede seleccionar automáticamente el monitor principal.
+
+## Controles de escritorio
+
+Valores predeterminados:
+
+| Acción | Atajo |
+|---|---|
+| Iniciar o detener | Ctrl+Shift+R |
+| Pausar o reanudar | Ctrl+Shift+P |
+| Detener | Ctrl+Shift+X |
+
+Los atajos pueden modificarse desde Información y preferencias. Si un atajo está repetido o ya pertenece a otra aplicación, CleanRecord conserva la configuración anterior.
+
+Al comenzar una grabación, la ventana principal se oculta y aparece un controlador flotante. Electron usa protección de contenido para evitar que el controlador forme parte de la captura cuando el sistema operativo lo permite.
+
+## Archivos, recuperación e historial
+
+En Electron, MediaRecorder entrega un fragmento cada segundo. Cada fragmento se envía mediante IPC validado y se escribe en el directorio de recuperación dentro de app.getPath('userData').
+
+- Una sesión finalizada aparece inmediatamente en el historial.
+- Al guardar, se utiliza el diálogo nativo y se recuerda la última carpeta.
+- El guardado automático opcional utiliza esa carpeta o Videos en la primera ejecución.
+- Una sesión interrumpida se detecta en el siguiente arranque y se marca como Recuperada.
+- Quitar elimina únicamente la entrada del historial.
+- Eliminar archivo envía el archivo guardado a la Papelera; los temporales internos se eliminan directamente después de una confirmación.
+
+El modo web conserva el comportamiento original basado en un Blob, porque una página no puede escribir silenciosamente en el sistema de archivos.
+
+## Pruebas
+
+Pruebas unitarias:
+
+    npx ng test --watch=false
+
+Pruebas E2E, visuales y de accesibilidad:
+
+    npm run test:e2e
+
+Actualizar referencias visuales después de un cambio aprobado:
+
+    npm run test:e2e:update
+
+Las referencias cubren 375, 768, 1366 y 1920 px. También se valida el flujo simulado completo, Axe/WCAG y el arranque real de Electron con contextIsolation, sandbox y preload.
+
+## Empaquetado local
+
+Generar el directorio ejecutable sin instalador:
+
+    npm run desktop:package:dir
+
+Generar un instalador local sin publicar:
+
+    npm run desktop:package
+
+Los artefactos se escriben en release. El ejecutable local puede permanecer sin firma si no se proporciona un certificado.
+
+## Release firmado y actualizaciones
+
+Una publicación profesional necesita:
+
+- Certificado de firma de código Windows en CSC_LINK.
+- Contraseña del certificado en CSC_KEY_PASSWORD.
+- Canal HTTPS de archivos estáticos en CLEANRECORD_UPDATE_URL.
+
+Ejemplo:
+
+    $env:CSC_LINK = 'C:\certificados\cleanrecord.pfx'
+    $env:CSC_KEY_PASSWORD = 'solicitar-desde-un-gestor-seguro'
+    $env:CLEANRECORD_UPDATE_URL = 'https://actualizaciones.midominio.com/cleanrecord/'
+    npm run desktop:release
+
+El script rechaza releases sin certificado o sin una URL HTTPS. Durante el empaquetado incorpora temporalmente el canal de actualización y lo elimina del árbol de trabajo al terminar.
+
+Después de compilar, se deben publicar en la URL configurada el instalador, su archivo .blockmap y latest.yml. CleanRecord verifica la firma antes de instalar una actualización.
+
+No guardes certificados ni contraseñas dentro del repositorio.
+
+## Seguridad y privacidad
+
+- contextIsolation activado, nodeIntegration desactivado y sandbox activado.
+- IPC disponible únicamente mediante APIs explícitas del preload.
+- Validación del origen en cada operación IPC.
+- Navegación y ventanas externas bloqueadas.
+- CSP restrictiva y protocolo local dedicado para reproducir grabaciones.
+- Archivos e historial almacenados localmente.
+- Los archivos eliminados fuera del directorio de recuperación se envían a la Papelera.
+
+## Tecnologías
+
 - Angular 22
 - Electron 43
+- Electron Builder
+- Electron Updater
 - RxJS
-- TypeScript
-- TailwindCSS
-- MediaRecorder API
-- AudioContext API
+- Tailwind CSS
+- MediaRecorder y Web Audio API
+- Vitest, Playwright y Axe
 
-📷 Demo https://clean-record.netlify.app/
-
-🧑‍💼 Autor
-- Mateo Huancho — LinkedIn www.linkedin.com/in/mhuancho08
+Autor: Mateo Huancho

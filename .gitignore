@@ -34,6 +34,8 @@ yarn-error.log
 .sass-cache/
 /connect.lock
 /coverage
+/playwright-report
+/test-results
 /libpeerconnection.log
 testem.log
 /typings
@@ -41,3 +43,8 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+
+# Release secrets and generated update configuration
+/electron/update-config.json
+*.pfx
+*.p12

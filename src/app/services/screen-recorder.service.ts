@@ -5,6 +5,7 @@ export interface RecordingOptions {
   includeMicrophone: boolean;
   includeSystemAudio: boolean;
   allowSimultaneousAudio?: boolean;
+  microphoneDeviceId?: string;
 }
 
 export interface RecordingMedia {
@@ -16,6 +17,10 @@ export interface RecordingMedia {
     frameRate?: number;
     microphoneCaptured: boolean;
     systemAudioCaptured: boolean;
+  };
+  audioLevels?: {
+    microphone: () => number;
+    system: () => number;
   };
 }
 
@@ -79,6 +84,7 @@ export class ScreenRecorderService {
       micStream = options.includeMicrophone
         ? await navigator.mediaDevices.getUserMedia({
           audio: {
+            ...(options.microphoneDeviceId ? { deviceId: { exact: options.microphoneDeviceId } } : {}),
             echoCancellation: { exact: true },
             noiseSuppression: { ideal: true },
             autoGainControl: { ideal: true },
@@ -96,10 +102,30 @@ export class ScreenRecorderService {
 
       let outputAudioTracks: MediaStreamTrack[] = [];
       const sourceAudioTracks = [...systemAudioTracks, ...microphoneTracks];
+      let microphoneAnalyser: AnalyserNode | undefined;
+      let systemAnalyser: AnalyserNode | undefined;
+
+      const configureAnalyser = (source: MediaStreamAudioSourceNode, current?: AnalyserNode) => {
+        if (!audioContext) return current;
+        const analyser = current ?? audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.75;
+        source.connect(analyser);
+        return analyser;
+      };
 
       if (sourceAudioTracks.length === 1) {
         // Una fuente no necesita mezcla ni remuestreo. Mantener la pista original
-        // conserva el procesamiento acústico aplicado por el navegador.
+        // conserva el procesamiento acústico aplicado por el navegador. El contexto
+        // se usa únicamente para medir señal y nunca se conecta a los altavoces.
+        audioContext = new AudioContext({ latencyHint: 'interactive' });
+        const source = audioContext.createMediaStreamSource(new MediaStream(sourceAudioTracks));
+        if (microphoneTracks.length > 0) {
+          microphoneAnalyser = configureAnalyser(source);
+        } else {
+          systemAnalyser = configureAnalyser(source);
+        }
+        if (audioContext.state === 'suspended') await audioContext.resume();
         outputAudioTracks = sourceAudioTracks;
       } else if (sourceAudioTracks.length > 1) {
         audioContext = new AudioContext({ latencyHint: 'interactive' });
@@ -118,6 +144,7 @@ export class ScreenRecorderService {
 
         for (const track of systemAudioTracks) {
           const source = audioContext.createMediaStreamSource(new MediaStream([track]));
+          systemAnalyser = configureAnalyser(source, systemAnalyser);
           const gain = audioContext.createGain();
           gain.gain.value = 0.85;
           source.connect(gain);
@@ -126,6 +153,7 @@ export class ScreenRecorderService {
 
         for (const track of microphoneTracks) {
           const source = audioContext.createMediaStreamSource(new MediaStream([track]));
+          microphoneAnalyser = configureAnalyser(source, microphoneAnalyser);
           const highPassFilter = audioContext.createBiquadFilter();
           const gain = audioContext.createGain();
           highPassFilter.type = 'highpass';
@@ -155,9 +183,26 @@ export class ScreenRecorderService {
       ]);
 
       let cleaned = false;
+      const createLevelReader = (analyser?: AnalyserNode) => {
+        if (!analyser) return () => 0;
+        const samples = new Uint8Array(analyser.fftSize);
+        return () => {
+          analyser.getByteTimeDomainData(samples);
+          let meanSquare = 0;
+          for (const value of samples) {
+            const normalized = (value - 128) / 128;
+            meanSquare += normalized * normalized;
+          }
+          return Math.min(100, Math.round(Math.sqrt(meanSquare / samples.length) * 280));
+        };
+      };
 
       return {
         stream,
+        audioLevels: {
+          microphone: createLevelReader(microphoneAnalyser),
+          system: createLevelReader(systemAnalyser)
+        },
         details: {
           width: videoSettings.width,
           height: videoSettings.height,

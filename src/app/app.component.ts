@@ -11,5 +11,5 @@ import { NotificationComponent } from '@shared/notification/notification.compone
   styleUrl: './app.component.css'
 })
 export class AppComponent {
-  title = 'clean-record';
+  title = 'CleanRecord';
 }
