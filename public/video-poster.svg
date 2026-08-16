@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="42%" r="48%">
+      <stop stop-color="#252c48"/>
+      <stop offset="1" stop-color="#090d18"/>
+    </radialGradient>
+    <linearGradient id="brand" x1="735" y1="360" x2="865" y2="500" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#5b21b6"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#glow)"/>
+  <rect x="744" y="330" width="112" height="112" rx="30" fill="url(#brand)"/>
+  <rect x="770" y="361" width="45" height="51" rx="13" fill="none" stroke="#fff" stroke-width="8"/>
+  <path d="m815 376 24-12v44l-24-12v-20Z" fill="#fff"/>
+  <text x="800" y="500" fill="#f8fafc" font-family="Segoe UI, Arial, sans-serif" font-size="32" font-weight="700" text-anchor="middle">CleanRecord</text>
+  <text x="800" y="545" fill="#94a3b8" font-family="Segoe UI, Arial, sans-serif" font-size="22" text-anchor="middle">Vista previa de la grabación</text>
+</svg>

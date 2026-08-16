@@ -26,4 +26,15 @@ describe('AppComponent', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('h1')?.textContent).toContain('Grabador de pantalla');
   });
+
+  it('should enable system audio by default', async () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const compiled = fixture.nativeElement as HTMLElement;
+    const systemAudio = compiled.querySelector<HTMLInputElement>('input[name="includeSystemAudio"]');
+
+    expect(systemAudio?.checked).toBe(true);
+  });
 });

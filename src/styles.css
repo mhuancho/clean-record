@@ -2,6 +2,14 @@
 
 :root {
   color-scheme: light;
+  --cr-primary: #4f46e5;
+  --cr-primary-hover: #4338ca;
+  --cr-surface: #ffffff;
+  --cr-border: #e2e8f0;
+  --cr-radius-sm: 0.75rem;
+  --cr-radius-md: 1rem;
+  --cr-radius-lg: 1.25rem;
+  --cr-shadow-surface: 0 10px 32px rgba(15, 23, 42, 0.07);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }

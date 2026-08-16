@@ -132,7 +132,8 @@ describe('ScreenRecorderService', () => {
       audio: {
         restrictOwnAudio: true,
         suppressLocalAudioPlayback: true
-      }
+      },
+      systemAudio: 'include'
     }));
     expect(getUserMedia).toHaveBeenCalledWith({
       audio: expect.objectContaining({

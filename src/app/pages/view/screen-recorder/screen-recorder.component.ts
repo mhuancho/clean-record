@@ -16,7 +16,7 @@ import { Observable } from 'rxjs';
 export class ScreenRecorderComponent implements OnInit, OnDestroy {
   selectedQuality: '720p' | '1080p' = '1080p';
   includeMicrophone = true;
-  includeSystemAudio = false;
+  includeSystemAudio = true;
   readonly isDesktopMode = typeof navigator !== 'undefined' && /Electron\//.test(navigator.userAgent);
   readonly isBrowserSupported = typeof navigator !== 'undefined'
     && !!navigator.mediaDevices?.getDisplayMedia
