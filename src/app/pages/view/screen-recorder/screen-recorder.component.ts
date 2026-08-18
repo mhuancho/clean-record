@@ -184,6 +184,15 @@ export class ScreenRecorderComponent implements OnInit, OnDestroy {
     this.showDownload = !this.showDownload;
   }
 
+  // Cerrar el panel dentro del mismo clic quita el enlace del DOM y el navegador
+  // cancela la descarga, así que el cierre espera a que la navegación arranque.
+  closeDownloadSoon() {
+    setTimeout(() => {
+      this.showDownload = false;
+      this.cdr.markForCheck();
+    }, 400);
+  }
+
   /** Resumen que reemplaza al detalle cuando el menú está plegado. */
   get audioSummary(): string {
     if (this.includeMicrophone && this.includeSystemAudio) return 'Micrófono + sistema';
