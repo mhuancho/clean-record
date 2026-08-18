@@ -95,6 +95,20 @@ Generar un instalador local sin publicar:
 
 Los artefactos se escriben en release. El ejecutable local puede permanecer sin firma si no se proporciona un certificado.
 
+## Descarga desde la versión web
+
+El modo navegador ofrece el instalador en la barra superior. La ubicación se lee en tiempo de ejecución desde `public/download.json`, así que puede cambiarse sin recompilar:
+
+    {
+      "version": "1.0.0",
+      "size": "108 MB",
+      "platform": "Windows 10 y 11 · 64 bits",
+      "url": "https://.../CleanRecord-Setup-1.0.0-x64.exe",
+      "detailsUrl": "https://.../releases/latest"
+    }
+
+Sin archivo o sin `url`, la descarga no se muestra. En Electron nunca aparece.
+
 ## Release firmado y actualizaciones
 
 Una publicación profesional necesita:

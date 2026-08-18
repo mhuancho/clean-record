@@ -115,14 +115,7 @@ export class ScreenRecorderControllerService {
       this.updateCaptureDetails(media);
       this.startAudioMonitoring(media.audioLevels);
 
-      if ((options.includeMicrophone || options.includeSystemAudio) && stream.getAudioTracks().length === 0) {
-        this.notificationService.warning('La grabación continuará sin audio porque no se detectó ninguna fuente.');
-        this.recorderIssue$.next({
-          title: 'No se detectó señal de audio',
-          message: 'Puedes continuar sin audio o revisar los permisos y dispositivos del sistema.',
-          action: this.desktopIntegration.isDesktop ? 'settings' : 'dismiss'
-        });
-      }
+      this.reportAudioGaps(options, media, stream);
 
       // La vista previa es únicamente visual. Forzar silencio por propiedad evita
       // realimentar el micrófono incluso si el atributo HTML se rehidrata o cambia.
@@ -308,20 +301,51 @@ export class ScreenRecorderControllerService {
     }
   }
 
+  // El audio nunca detiene una captura ya iniciada: la pantalla se sigue grabando y el
+  // problema se informa sin bloquear.
+  private reportAudioGaps(
+    options: RecordingOptions,
+    media: Awaited<ReturnType<ScreenRecorderService['getCombinedStream']>>,
+    stream: MediaStream
+  ): void {
+    const wantedAudio = options.includeMicrophone || options.includeSystemAudio;
+    if (!wantedAudio || stream.getAudioTracks().length > 0) {
+      if (media.details.microphoneError) {
+        this.notificationService.warning('El micrófono no está disponible. La grabación continúa con el audio del sistema.');
+      }
+      return;
+    }
+
+    const message = media.details.microphoneError === 'denied'
+      ? 'El sistema no autorizó el micrófono. Puedes continuar sin audio o revisar sus permisos.'
+      : media.details.microphoneError === 'missing'
+        ? 'No hay un micrófono conectado. Puedes continuar sin audio o seleccionar otro dispositivo.'
+        : 'Puedes continuar sin audio o revisar los permisos y dispositivos del sistema.';
+
+    this.notificationService.warning('La grabación continuará sin audio porque no se detectó ninguna fuente.');
+    this.recorderIssue$.next({
+      title: 'No se detectó señal de audio',
+      message,
+      action: this.desktopIntegration.isDesktop ? 'settings' : 'dismiss'
+    });
+  }
+
   private handleStartError(error: unknown) {
     const err = error as DOMException;
+    // El micrófono ya no interrumpe el inicio, así que estos errores describen la captura
+    // de pantalla.
     if (err.name === 'NotAllowedError') {
-      this.notificationService.error('Permiso denegado para acceder a la pantalla o al micrófono.');
+      this.notificationService.error('No se autorizó la captura de pantalla.');
       this.recorderIssue$.next({
-        title: 'Permiso de captura denegado',
-        message: 'Autoriza el micrófono y la captura de pantalla en la configuración del sistema, luego vuelve a intentarlo.',
-        action: this.desktopIntegration.isDesktop ? 'settings' : 'retry'
+        title: 'Captura de pantalla no autorizada',
+        message: 'La captura del monitor fue rechazada. Vuelve a intentarlo.',
+        action: 'retry'
       });
     } else if (err.name === 'NotFoundError') {
-      this.notificationService.error('No se encontró una pantalla o un micrófono disponible.');
+      this.notificationService.error('No se encontró una pantalla disponible para capturar.');
       this.recorderIssue$.next({
-        title: 'Dispositivo no disponible',
-        message: 'Conecta o selecciona otro micrófono y vuelve a iniciar la captura.',
+        title: 'Pantalla no disponible',
+        message: 'No hay un monitor disponible para capturar. Verifica la pantalla y vuelve a iniciar la captura.',
         action: 'retry'
       });
     } else if (err.name === 'InvalidStateError') {

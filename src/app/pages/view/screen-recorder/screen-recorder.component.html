@@ -1,116 +1,69 @@
-<main class="relative min-h-screen overflow-hidden bg-slate-100 text-slate-900">
-  <div class="ambient-grid pointer-events-none absolute inset-0"></div>
+<main class="app-shell bg-slate-100 text-slate-900"
+  [class.app-shell--collapsed]="!isSettingsOpen || (isStudioBusy$ | async)">
 
-  <header class="relative z-10 border-b border-slate-200 bg-white/95 backdrop-blur">
-    <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-      <a class="brand-link flex items-center gap-3 rounded-xl" href="./" aria-label="Ir al inicio de CleanRecord">
-        <span class="brand-mark grid h-10 w-10 place-items-center rounded-xl text-white">
-          <svg aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="none">
-            <rect x="3" y="5" width="13" height="14" rx="4" stroke="currentColor" stroke-width="2"/>
-            <path d="m16 10 4-2v8l-4-2v-4Z" fill="currentColor"/>
-          </svg>
-        </span>
-        <span>
-          <span class="block text-base font-bold tracking-tight text-slate-950">CleanRecord</span>
-          <span class="block text-xs font-medium text-slate-500">Grabación privada</span>
-        </span>
-      </a>
-
-      <div class="flex items-center gap-2">
-        <button type="button" (click)="showAbout = true"
-          class="grid h-9 w-9 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-800 focus:outline-none focus:ring-4 focus:ring-indigo-100"
-          aria-label="Abrir información y preferencias" title="Información y preferencias">
-          <svg aria-hidden="true" class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/>
-          </svg>
-        </button>
-        <div class="flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
-          <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/>
-          </svg>
-          <span class="hidden sm:inline">Procesamiento local</span>
-          <span class="sm:hidden">Local</span>
-        </div>
-      </div>
-    </div>
-  </header>
-
-  <div class="relative z-10 mx-auto max-w-7xl px-4 pb-8 pt-5 sm:px-6 sm:pb-10 lg:px-8">
-    @if (!(isRecording$ | async) && !(isPreparing$ | async) && !(isCountingDown$ | async) && !(showFinalVideo$ | async)) {
-      <section aria-labelledby="recorder-title" class="mb-5 grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(300px,520px)] md:items-end md:gap-8">
-        <div>
-          <p class="text-sm font-semibold text-indigo-600">Estudio de captura</p>
-          <h1 id="recorder-title" class="mt-1 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">Grabador de pantalla</h1>
-        </div>
-        <p class="text-sm leading-6 text-slate-500 md:text-right">
-          Configura el video, verifica el audio y comienza. Todo se procesa en este dispositivo.
-        </p>
-      </section>
-    }
-
-    @if (!isBrowserSupported) {
-      <div role="alert" class="mx-auto mb-5 flex max-w-4xl items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-        <svg aria-hidden="true" class="mt-0.5 h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 9v4m0 4h.01M10.3 3.9 2.6 17.1A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.9L13.7 3.9a2 2 0 0 0-3.4 0Z"/>
+  <aside class="app-sidebar">
+    <a class="brand-link sidebar-brand" href="./" aria-label="Ir al inicio de CleanRecord">
+      <span class="brand-mark grid h-10 w-10 shrink-0 place-items-center rounded-xl text-white">
+        <svg aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="none">
+          <rect x="3" y="5" width="13" height="14" rx="4" stroke="currentColor" stroke-width="2"/>
+          <path d="m16 10 4-2v8l-4-2v-4Z" fill="currentColor"/>
         </svg>
-        <div><strong>Navegador no compatible.</strong> Abre CleanRecord en una versión reciente de Chrome, Edge o Firefox.</div>
-      </div>
-    }
+      </span>
+      <span class="sidebar-brand__text min-w-0">
+        <span class="block truncate text-base font-bold tracking-tight text-slate-950">CleanRecord</span>
+        <span class="block truncate text-xs font-medium text-slate-500">Grabación privada</span>
+      </span>
+    </a>
 
-    @if (recorderIssue$ | async; as issue) {
-      <div role="alert" class="mx-auto mb-5 flex max-w-4xl flex-col gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-950 sm:flex-row sm:items-center">
-        <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-rose-100 text-rose-600">
+    @if (!(isStudioBusy$ | async)) {
+      <h2 class="sr-only">Configuración de la captura</h2>
+      <button type="button" class="accordion-toggle" (click)="toggleSettings()"
+        [attr.aria-expanded]="isSettingsOpen" aria-controls="settings-panel"
+        [title]="isSettingsOpen ? 'Cerrar configuración' : 'Abrir configuración'">
+        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-600">
           <svg aria-hidden="true" class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 9v4m0 4h.01M10.3 3.9 2.6 17.1A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.9L13.7 3.9a2 2 0 0 0-3.4 0Z"/>
+            <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/>
+            <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/>
           </svg>
         </span>
-        <div class="min-w-0 flex-1">
-          <p class="font-bold">{{ issue.title }}</p>
-          <p class="mt-0.5 leading-5 text-rose-800">{{ issue.message }}</p>
-        </div>
-        <button type="button" class="button button--secondary shrink-0" (click)="handleIssueAction(issue)">
-          {{ issue.action === 'settings' ? 'Abrir configuración' : issue.action === 'retry' ? 'Reintentar' : 'Cerrar' }}
-        </button>
-      </div>
+        <span class="accordion-toggle__text min-w-0 flex-1 text-left">
+          <span class="block truncate text-sm font-bold text-slate-900">Configuración</span>
+          <span class="block truncate text-xs leading-5 text-slate-500">
+            {{ isSettingsOpen ? 'Prepara la captura antes de iniciar' : selectedQuality + ' · ' + audioSummary }}
+          </span>
+        </span>
+        <span aria-hidden="true" class="accordion-chevron" [class.accordion-chevron--open]="isSettingsOpen">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+        </span>
+        <span class="sr-only">{{ isSettingsOpen ? 'Cerrar el menú de configuración' : 'Abrir el menú de configuración' }}</span>
+      </button>
     }
 
-    <div class="grid items-start gap-5"
-      [ngClass]="((isRecording$ | async) || (isPreparing$ | async) || (isCountingDown$ | async) || (showFinalVideo$ | async)) ? 'grid-cols-1' : 'lg:grid-cols-[320px_minmax(0,1fr)]'">
-      @if (!(isRecording$ | async) && !(isPreparing$ | async) && !(isCountingDown$ | async) && !(showFinalVideo$ | async)) {
-        <aside class="surface-panel order-1 min-w-0 p-5 lg:sticky lg:top-5">
-          <div class="mb-5 flex items-center gap-3">
-            <span class="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-600">
-              <svg aria-hidden="true" class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/>
-                <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/>
-              </svg>
-            </span>
-            <div>
-              <h2 class="text-base font-bold text-slate-900">Configuración</h2>
-              <p class="text-xs leading-5 text-slate-500">Prepara la captura antes de iniciar</p>
-            </div>
+    @if (isSettingsOpen && !(isStudioBusy$ | async)) {
+      <div id="settings-panel" class="accordion-panel border-t border-slate-200 p-5">
+        @if (isBrowserSupported && !isDesktopMode) {
+          <div role="status" class="mode-notice mb-5 border-sky-200 bg-sky-50 text-sky-900">
+            <svg aria-hidden="true" class="mt-0.5 h-4 w-4 shrink-0 text-sky-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 9v4m0 4h.01M10.3 3.9 2.6 17.1A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.9L13.7 3.9a2 2 0 0 0-3.4 0Z"/>
+            </svg>
+            <div><strong>Modo navegador.</strong> El navegador solicitará elegir la pantalla por seguridad.</div>
           </div>
+        }
 
-          @if (isBrowserSupported && !isDesktopMode) {
-            <div role="status" class="mode-notice mb-5 border-sky-200 bg-sky-50 text-sky-900">
-              <svg aria-hidden="true" class="mt-0.5 h-4 w-4 shrink-0 text-sky-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 9v4m0 4h.01M10.3 3.9 2.6 17.1A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.9L13.7 3.9a2 2 0 0 0-3.4 0Z"/>
-              </svg>
-              <div><strong>Modo navegador.</strong> El navegador solicitará elegir la pantalla por seguridad.</div>
-            </div>
-          }
+        @if (isDesktopMode) {
+          <div role="status" class="mode-notice mb-5 border-emerald-200 bg-emerald-50 text-emerald-900">
+            <svg aria-hidden="true" class="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m5 12 4 4L19 6"/>
+            </svg>
+            <div><strong>Modo escritorio.</strong> Se capturará automáticamente el monitor principal.</div>
+          </div>
+        }
 
-          @if (isDesktopMode) {
-            <div role="status" class="mode-notice mb-5 border-emerald-200 bg-emerald-50 text-emerald-900">
-              <svg aria-hidden="true" class="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="m5 12 4 4L19 6"/>
-              </svg>
-              <div><strong>Modo escritorio.</strong> Se capturará automáticamente el monitor principal.</div>
-            </div>
-          }
+        <fieldset class="settings-grid" [disabled]="(isRecording$ | async) || (isPreparing$ | async) || (isCountingDown$ | async)">
+          <legend class="sr-only">Opciones de captura</legend>
 
-          <fieldset class="min-w-0" [disabled]="(isRecording$ | async) || (isPreparing$ | async) || (isCountingDown$ | async)">
-            <legend class="mb-3 text-sm font-bold text-slate-800">Calidad de video</legend>
+          <div class="settings-group">
+            <p class="settings-group__title">Calidad de video</p>
             <div class="grid grid-cols-2 gap-2">
               <button type="button" class="quality-option" (click)="setQuality('720p')"
                 [class.quality-option--selected]="selectedQuality === '720p'" [attr.aria-pressed]="selectedQuality === '720p'">
@@ -123,10 +76,10 @@
                 <span class="mt-1 block text-xs">Mayor detalle</span>
               </button>
             </div>
+          </div>
 
-            <div class="my-5 h-px bg-slate-200"></div>
-
-            <p class="mb-3 text-sm font-bold text-slate-800">Fuentes de audio</p>
+          <div class="settings-group">
+            <p class="settings-group__title">Fuentes de audio</p>
             <div class="space-y-2">
               <label class="source-option">
                 <span class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-indigo-50 text-indigo-600">
@@ -174,9 +127,12 @@
             } @else {
               <p class="mt-3 text-xs leading-5 text-slate-500">Puedes activar ambas fuentes y grabarlas simultáneamente.</p>
             }
+          </div>
 
-            <label class="mt-4 block">
-              <span class="mb-2 block text-xs font-bold text-slate-700">Micrófono activo</span>
+          <div class="settings-group">
+            <p class="settings-group__title">Micrófono</p>
+            <label class="block">
+              <span class="mb-2 block text-xs font-bold text-slate-700">Dispositivo activo</span>
               <select class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:opacity-50"
                 [ngModel]="selectedMicrophoneId" (ngModelChange)="setMicrophoneDevice($event)" name="microphoneDevice"
                 [disabled]="!includeMicrophone">
@@ -187,7 +143,7 @@
               </select>
             </label>
 
-            <div class="mt-4 min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <div class="mt-3 min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-3">
               <div class="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
                 <div class="min-w-0">
                   <p class="truncate text-xs font-semibold text-slate-700" [title]="microphoneName">{{ microphoneName }}</p>
@@ -202,19 +158,147 @@
                 <div class="microphone-level h-full rounded-full transition-[width] duration-100" [style.width.%]="microphoneLevel"></div>
               </div>
             </div>
-          </fieldset>
-
-          <div class="mt-4 flex items-start gap-2 text-xs leading-5 text-slate-500">
-            <svg aria-hidden="true" class="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/>
-            </svg>
-            <span>La grabación permanece en este dispositivo hasta que decidas guardarla.</span>
           </div>
-        </aside>
+        </fieldset>
+      </div>
+    }
+  </aside>
+
+  <div class="app-main">
+    <header class="app-topbar">
+      @if (!isDesktopMode && (desktopDownload$ | async); as download) {
+        <div class="relative mr-auto">
+          <button type="button" class="download-trigger" (click)="toggleDownload()"
+            [attr.aria-expanded]="showDownload" aria-controls="download-panel">
+            <span aria-hidden="true" class="grid h-9 w-9 shrink-0 place-items-center rounded-[0.625rem] bg-indigo-50 text-indigo-600">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 3v10m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+              </svg>
+            </span>
+            <span class="min-w-0">
+              <span class="block text-sm font-bold text-slate-800">Descargar app de escritorio</span>
+              <span class="hidden text-xs leading-4 text-slate-500 sm:block">{{ download.platform }}</span>
+            </span>
+            <span aria-hidden="true" class="accordion-chevron h-7 w-7" [class.accordion-chevron--open]="showDownload">
+              <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+            </span>
+          </button>
+
+          @if (showDownload) {
+            <div class="fixed inset-0 z-40" (click)="showDownload = false"></div>
+            <div id="download-panel" class="download-popover" role="dialog" aria-label="Descargar CleanRecord para escritorio">
+              <div class="flex items-start gap-3 border-b border-slate-200 p-4">
+                <span class="brand-mark grid h-11 w-11 shrink-0 place-items-center rounded-xl text-white">
+                  <svg aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="none">
+                    <rect x="3" y="5" width="13" height="14" rx="4" stroke="currentColor" stroke-width="2"/>
+                    <path d="m16 10 4-2v8l-4-2v-4Z" fill="currentColor"/>
+                  </svg>
+                </span>
+                <div class="min-w-0">
+                  <p class="text-sm font-bold text-slate-900">CleanRecord para escritorio</p>
+                  <p class="mt-0.5 text-xs leading-5 text-slate-500">{{ download.platform }}</p>
+                </div>
+              </div>
+
+              <dl class="grid grid-cols-2 gap-px border-b border-slate-200 bg-slate-200">
+                <div class="bg-slate-50 px-4 py-2.5">
+                  <dt class="text-xs text-slate-500">Versión</dt>
+                  <dd class="text-xs font-bold text-slate-700">{{ download.version || 'Última' }}</dd>
+                </div>
+                <div class="bg-slate-50 px-4 py-2.5">
+                  <dt class="text-xs text-slate-500">Tamaño</dt>
+                  <dd class="text-xs font-bold text-slate-700">{{ download.size || 'Instalador' }}</dd>
+                </div>
+              </dl>
+
+              <ul class="space-y-2 p-4 text-xs leading-5 text-slate-600">
+                <li class="flex items-start gap-2">
+                  <svg aria-hidden="true" class="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 4 4L19 6"/></svg>
+                  Captura el monitor principal sin elegir pantalla cada vez.
+                </li>
+                <li class="flex items-start gap-2">
+                  <svg aria-hidden="true" class="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 4 4L19 6"/></svg>
+                  Atajos globales, controlador flotante e historial recuperable.
+                </li>
+                <li class="flex items-start gap-2">
+                  <svg aria-hidden="true" class="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 4 4L19 6"/></svg>
+                  Escribe la grabación a disco mientras capturas.
+                </li>
+              </ul>
+
+              <div class="flex flex-col gap-2 border-t border-slate-200 p-4">
+                <a class="button button--primary !w-full" [href]="download.url" rel="noopener" (click)="showDownload = false">
+                  <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/>
+                  </svg>
+                  Descargar instalador
+                </a>
+                @if (download.detailsUrl) {
+                  <a class="text-center text-xs font-semibold text-indigo-600 hover:text-indigo-700"
+                    [href]="download.detailsUrl" target="_blank" rel="noopener">Ver todas las versiones</a>
+                }
+                <p class="text-center text-xs leading-5 text-slate-400">Las grabaciones se siguen procesando en tu equipo.</p>
+              </div>
+            </div>
+          }
+        </div>
       }
 
-      <section class="surface-panel order-2 min-w-0 overflow-hidden"
-        [ngClass]="((isRecording$ | async) || (isPreparing$ | async) || (isCountingDown$ | async) || (showFinalVideo$ | async)) ? 'mx-auto w-full max-w-6xl' : ''">
+      <button type="button" (click)="showAbout = true"
+        class="grid h-9 w-9 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-800 focus:outline-none focus:ring-4 focus:ring-indigo-100"
+        aria-label="Abrir información y preferencias" title="Información y preferencias">
+        <svg aria-hidden="true" class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/>
+        </svg>
+      </button>
+      <div class="flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
+        <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/>
+        </svg>
+        <span class="hidden sm:inline">Procesamiento local</span>
+        <span class="sm:hidden">Local</span>
+      </div>
+    </header>
+
+    <div class="app-content">
+      <div class="ambient-grid pointer-events-none absolute inset-0"></div>
+      <div class="studio-column relative z-10 mx-auto px-4 pb-6 pt-5 sm:px-6 sm:pb-8 lg:px-8">
+    @if (!(isStudioBusy$ | async)) {
+      <section aria-labelledby="recorder-title" class="mb-4 text-center">
+        <h1 id="recorder-title" class="text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">Grabador de pantalla</h1>
+        <p class="mx-auto mt-1 max-w-lg text-xs leading-5 text-slate-500 sm:text-sm">
+          Configura el video, verifica el audio y comienza. Todo se procesa en este dispositivo.
+        </p>
+      </section>
+    }
+
+    @if (!isBrowserSupported) {
+      <div role="alert" class="mx-auto mb-5 flex max-w-4xl items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+        <svg aria-hidden="true" class="mt-0.5 h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 9v4m0 4h.01M10.3 3.9 2.6 17.1A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.9L13.7 3.9a2 2 0 0 0-3.4 0Z"/>
+        </svg>
+        <div><strong>Navegador no compatible.</strong> Abre CleanRecord en una versión reciente de Chrome, Edge o Firefox.</div>
+      </div>
+    }
+
+    @if (recorderIssue$ | async; as issue) {
+      <div role="alert" class="mx-auto mb-5 flex max-w-4xl flex-col gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-950 sm:flex-row sm:items-center">
+        <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-rose-100 text-rose-600">
+          <svg aria-hidden="true" class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 9v4m0 4h.01M10.3 3.9 2.6 17.1A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.9L13.7 3.9a2 2 0 0 0-3.4 0Z"/>
+          </svg>
+        </span>
+        <div class="min-w-0 flex-1">
+          <p class="font-bold">{{ issue.title }}</p>
+          <p class="mt-0.5 leading-5 text-rose-800">{{ issue.message }}</p>
+        </div>
+        <button type="button" class="button button--secondary shrink-0" (click)="handleIssueAction(issue)">
+          {{ issue.action === 'settings' ? 'Abrir configuración' : issue.action === 'retry' ? 'Reintentar' : 'Cerrar' }}
+        </button>
+      </div>
+    }
+
+    <section class="surface-panel stage-column min-w-0 overflow-hidden">
         @if (!(showFinalVideo$ | async)) {
           <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3.5 sm:px-5">
             <div class="flex min-w-0 items-center gap-3">
@@ -247,7 +331,7 @@
           </div>
 
           <div class="bg-slate-950 p-2 sm:p-3">
-            <div class="video-shell relative aspect-video overflow-hidden rounded-xl bg-[#090d18]">
+            <div class="video-shell stage-frame relative aspect-video overflow-hidden rounded-xl bg-[#090d18]">
               <video id="preview" class="h-full w-full object-contain" autoplay muted playsinline></video>
 
               @if (!(isRecording$ | async) && !(isPreparing$ | async) && !(isCountingDown$ | async)) {
@@ -300,8 +384,8 @@
             </div>
           </div>
 
-          <div class="grid gap-4 border-t border-slate-200 bg-white px-4 py-4 sm:px-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-            <div class="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-500">
+          <div class="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 border-t border-slate-200 bg-white px-4 py-3.5 sm:px-5">
+            <div class="flex min-w-0 flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-slate-500">
               <span class="capture-meta">
                 <svg aria-hidden="true" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="13" rx="2"/></svg>
                 {{ (captureResolution$ | async) === 'Pendiente' ? selectedQuality : (captureResolution$ | async) }}
@@ -336,12 +420,12 @@
               }
             </div>
 
-            <div class="action-group">
+            <div class="action-group action-group--center">
               @if ((isPreparing$ | async) || (isCountingDown$ | async)) {
                 <button type="button" class="button button--secondary" (click)="cancelCountdown()">Cancelar</button>
               }
               @if (!(isRecording$ | async) && !(isPreparing$ | async) && !(isCountingDown$ | async)) {
-                <button type="button" class="button button--primary sm:min-w-48" (click)="startRecording()" [disabled]="!isBrowserSupported">
+                <button type="button" class="button button--primary sm:min-w-56" (click)="startRecording()" [disabled]="!isBrowserSupported">
                   <span class="h-2.5 w-2.5 rounded-full bg-white"></span>
                   Iniciar grabación
                 </button>
@@ -380,7 +464,7 @@
           <div class="bg-slate-950 p-2 sm:p-3">
             @if (previewUrl$ | async; as videoUrl) {
               <video [src]="videoUrl" controls preload="metadata" poster="video-poster.svg" aria-label="Vista previa de la grabación completada"
-                class="aspect-video h-auto w-full rounded-xl bg-black object-contain">
+                class="stage-frame aspect-video h-auto w-full rounded-xl bg-black object-contain">
               </video>
             }
           </div>
@@ -441,10 +525,9 @@
             </dl>
           </div>
         }
-      </section>
-    </div>
+    </section>
 
-    @if (desktopIntegration.isDesktop && !(isRecording$ | async) && !(isPreparing$ | async) && !(isCountingDown$ | async) && !(showFinalVideo$ | async)) {
+    @if (desktopIntegration.isDesktop && !(isStudioBusy$ | async)) {
       @if (history$ | async; as history) {
         @if (history.length > 0) {
           <section class="surface-panel mt-5 overflow-hidden" aria-labelledby="history-title">
@@ -485,10 +568,12 @@
       }
     }
 
-    <footer class="mt-5 flex flex-col items-center justify-between gap-1 text-center text-xs text-slate-400 sm:flex-row sm:text-left">
-      <span>Procesamiento local y privado</span>
-      <span>WebM · sin cargas externas</span>
+    <footer class="mt-4 text-center text-xs text-slate-400">
+      <span>Procesamiento local y privado · WebM sin cargas externas</span>
     </footer>
+      </div>
+    </div>
+  </div>
 
     @if (showAbout) {
       <div class="fixed inset-0 z-50 grid place-items-center bg-slate-950/55 p-4 backdrop-blur-sm" (click)="showAbout = false">
@@ -596,5 +681,4 @@
         </section>
       </div>
     }
-  </div>
 </main>

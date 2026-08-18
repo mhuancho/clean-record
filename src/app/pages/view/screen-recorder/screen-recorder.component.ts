@@ -1,10 +1,11 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostListener, OnDestroy, OnInit, Renderer2 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { DesktopDownload, DesktopDownloadService } from '@services/desktop-download.service';
 import { DesktopIntegrationService } from '@services/desktop-integration.service';
 import { NotificationService } from '@services/notification.service';
 import { RecorderIssue, ScreenRecorderControllerService } from '@services/screen-recorder-controller.service';
-import { combineLatest, Observable, Subscription } from 'rxjs';
+import { combineLatest, distinctUntilChanged, map, Observable, shareReplay, Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-screen-recorder',
@@ -21,6 +22,8 @@ export class ScreenRecorderComponent implements OnInit, OnDestroy {
   selectedMicrophoneId = '';
   microphones: MediaDeviceInfo[] = [];
   showAbout = false;
+  showDownload = false;
+  isSettingsOpen = true;
   shortcutDraft: DesktopShortcutSettings = {
     toggle: 'CommandOrControl+Shift+R',
     pause: 'CommandOrControl+Shift+P',
@@ -49,9 +52,12 @@ export class ScreenRecorderComponent implements OnInit, OnDestroy {
   systemAudioLevel$!: Observable<number>;
   recorderIssue$!: Observable<RecorderIssue | null>;
   savedRecording$!: Observable<DesktopRecordingEntry | null>;
+  /** La sesión ocupa el estudio completo: preparando, contando, grabando o revisando. */
+  isStudioBusy$!: Observable<boolean>;
   readonly history$: Observable<DesktopRecordingEntry[]>;
   readonly appInfo$: Observable<DesktopAppInfo>;
   readonly updateState$: Observable<DesktopUpdateState>;
+  readonly desktopDownload$: Observable<DesktopDownload | null>;
 
   isTestingMicrophone = false;
   microphoneLevel = 0;
@@ -71,11 +77,13 @@ export class ScreenRecorderComponent implements OnInit, OnDestroy {
     private renderer: Renderer2,
     private cdr: ChangeDetectorRef,
     private notificationService: NotificationService,
-    readonly desktopIntegration: DesktopIntegrationService
+    readonly desktopIntegration: DesktopIntegrationService,
+    desktopDownload: DesktopDownloadService
   ) {
     this.history$ = desktopIntegration.history$;
     this.appInfo$ = desktopIntegration.appInfo$;
     this.updateState$ = desktopIntegration.updateState$;
+    this.desktopDownload$ = desktopDownload.download$;
   }
 
   ngOnInit(): void {
@@ -97,6 +105,16 @@ export class ScreenRecorderComponent implements OnInit, OnDestroy {
     this.systemAudioLevel$ = this.controller.systemAudioLevel$;
     this.recorderIssue$ = this.controller.recorderIssue$;
     this.savedRecording$ = this.controller.savedRecording$;
+    this.isStudioBusy$ = combineLatest([
+      this.controller.isRecording$,
+      this.controller.isPreparing$,
+      this.controller.isCountingDown$,
+      this.controller.showFinalVideo$
+    ]).pipe(
+      map(states => states.some(Boolean)),
+      distinctUntilChanged(),
+      shareReplay({ bufferSize: 1, refCount: true })
+    );
 
     this.restorePreferences();
     void this.loadMicrophones();
@@ -159,6 +177,24 @@ export class ScreenRecorderComponent implements OnInit, OnDestroy {
   @HostListener('document:keydown.escape')
   closePreferences() {
     this.showAbout = false;
+    this.showDownload = false;
+  }
+
+  toggleDownload() {
+    this.showDownload = !this.showDownload;
+  }
+
+  /** Resumen que reemplaza al detalle cuando el menú está plegado. */
+  get audioSummary(): string {
+    if (this.includeMicrophone && this.includeSystemAudio) return 'Micrófono + sistema';
+    if (this.includeMicrophone) return 'Micrófono';
+    if (this.includeSystemAudio) return 'Sistema';
+    return 'Sin audio';
+  }
+
+  toggleSettings() {
+    this.isSettingsOpen = !this.isSettingsOpen;
+    this.persistPreferences();
   }
 
   startRecording() {
@@ -372,11 +408,13 @@ export class ScreenRecorderComponent implements OnInit, OnDestroy {
         includeMicrophone: boolean;
         includeSystemAudio: boolean;
         microphoneDeviceId: string;
+        settingsOpen: boolean;
       }>;
       if (preferences.quality === '720p' || preferences.quality === '1080p') this.selectedQuality = preferences.quality;
       if (typeof preferences.includeMicrophone === 'boolean') this.includeMicrophone = preferences.includeMicrophone;
       if (typeof preferences.includeSystemAudio === 'boolean') this.includeSystemAudio = preferences.includeSystemAudio;
       if (typeof preferences.microphoneDeviceId === 'string') this.selectedMicrophoneId = preferences.microphoneDeviceId;
+      if (typeof preferences.settingsOpen === 'boolean') this.isSettingsOpen = preferences.settingsOpen;
     } catch (error) {
       console.warn('No fue posible restaurar las preferencias:', error);
     }
@@ -387,7 +425,8 @@ export class ScreenRecorderComponent implements OnInit, OnDestroy {
       quality: this.selectedQuality,
       includeMicrophone: this.includeMicrophone,
       includeSystemAudio: this.includeSystemAudio,
-      microphoneDeviceId: this.selectedMicrophoneId
+      microphoneDeviceId: this.selectedMicrophoneId,
+      settingsOpen: this.isSettingsOpen
     }));
   }
 

@@ -182,6 +182,58 @@ describe('ScreenRecorderService', () => {
     expect(getUserMedia).toHaveBeenCalledOnce();
   });
 
+  it('continúa la captura cuando el sistema niega el micrófono', async () => {
+    const videoTrack = createTrack('video');
+    const systemTrack = createTrack('audio');
+    const connect = vi.fn();
+    const audioContext = {
+      state: 'running',
+      close: vi.fn().mockResolvedValue(undefined),
+      resume: vi.fn(),
+      createMediaStreamSource: vi.fn(() => ({ connect })),
+      createAnalyser: vi.fn(() => ({
+        fftSize: 256,
+        smoothingTimeConstant: 0,
+        getByteTimeDomainData: vi.fn((samples: Uint8Array) => samples.fill(128))
+      }))
+    };
+    vi.stubGlobal('AudioContext', vi.fn(function () {
+      return audioContext;
+    }));
+    getDisplayMedia.mockResolvedValue(new FakeMediaStream([videoTrack, systemTrack]));
+    getUserMedia.mockRejectedValue(new DOMException('Permission denied', 'NotAllowedError'));
+
+    const recording = await service.getCombinedStream({
+      quality: '1080p',
+      includeMicrophone: true,
+      includeSystemAudio: true,
+      allowSimultaneousAudio: true
+    });
+
+    expect(recording.stream.getVideoTracks()).toEqual([videoTrack]);
+    expect(recording.stream.getAudioTracks()).toEqual([systemTrack]);
+    expect(recording.details).toMatchObject({
+      microphoneCaptured: false,
+      systemAudioCaptured: true,
+      microphoneError: 'denied'
+    });
+  });
+
+  it('informa un micrófono ausente sin interrumpir la captura', async () => {
+    const videoTrack = createTrack('video');
+    getDisplayMedia.mockResolvedValue(new FakeMediaStream([videoTrack]));
+    getUserMedia.mockRejectedValue(new DOMException('Requested device not found', 'NotFoundError'));
+
+    const recording = await service.getCombinedStream({
+      quality: '720p',
+      includeMicrophone: true,
+      includeSystemAudio: false
+    });
+
+    expect(recording.stream.getVideoTracks()).toEqual([videoTrack]);
+    expect(recording.details.microphoneError).toBe('missing');
+  });
+
   it('conserva directamente la pista del micrófono y solo usa el contexto para medirla', async () => {
     const videoTrack = createTrack('video');
     const microphoneTrack = createTrack('audio');

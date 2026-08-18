@@ -17,6 +17,7 @@ export interface RecordingMedia {
     frameRate?: number;
     microphoneCaptured: boolean;
     systemAudioCaptured: boolean;
+    microphoneError?: 'denied' | 'missing' | 'unavailable';
   };
   audioLevels?: {
     microphone: () => number;
@@ -77,21 +78,18 @@ export class ScreenRecorderService {
     let screenStream: MediaStream | undefined;
     let micStream: MediaStream | null = null;
     let audioContext: AudioContext | null = null;
+    let microphoneError: RecordingMedia['details']['microphoneError'];
 
     try {
       screenStream = await navigator.mediaDevices.getDisplayMedia(displayOptions);
       const activeScreenStream = screenStream;
+      // El micrófono es un complemento de la captura. Si el sistema lo niega o no
+      // existe, la grabación continúa con la pantalla y el audio disponible.
       micStream = options.includeMicrophone
-        ? await navigator.mediaDevices.getUserMedia({
-          audio: {
-            ...(options.microphoneDeviceId ? { deviceId: { exact: options.microphoneDeviceId } } : {}),
-            echoCancellation: { exact: true },
-            noiseSuppression: { ideal: true },
-            autoGainControl: { ideal: true },
-            channelCount: { ideal: 1 },
-            sampleRate: { ideal: 48_000 },
-            sampleSize: { ideal: 16 }
-          }
+        ? await this.getMicrophoneStream(options.microphoneDeviceId).catch((error: unknown) => {
+          microphoneError = this.describeMicrophoneError(error);
+          console.warn('El micrófono no pudo capturarse; la grabación continúa sin él:', error);
+          return null;
         })
         : null;
 
@@ -208,7 +206,8 @@ export class ScreenRecorderService {
           height: videoSettings.height,
           frameRate: videoSettings.frameRate,
           microphoneCaptured: microphoneTracks.length > 0,
-          systemAudioCaptured: systemAudioTracks.length > 0
+          systemAudioCaptured: systemAudioTracks.length > 0,
+          ...(microphoneError ? { microphoneError } : {})
         },
         cleanup: () => {
           if (cleaned) return;
@@ -233,5 +232,26 @@ export class ScreenRecorderService {
       console.error('Error al obtener el flujo de grabación:', error);
       throw error;
     }
+  }
+
+  private getMicrophoneStream(deviceId?: string): Promise<MediaStream> {
+    return navigator.mediaDevices.getUserMedia({
+      audio: {
+        ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
+        echoCancellation: { exact: true },
+        noiseSuppression: { ideal: true },
+        autoGainControl: { ideal: true },
+        channelCount: { ideal: 1 },
+        sampleRate: { ideal: 48_000 },
+        sampleSize: { ideal: 16 }
+      }
+    });
+  }
+
+  private describeMicrophoneError(error: unknown): NonNullable<RecordingMedia['details']['microphoneError']> {
+    const name = (error as DOMException | undefined)?.name;
+    if (name === 'NotAllowedError' || name === 'SecurityError') return 'denied';
+    if (name === 'NotFoundError' || name === 'OverconstrainedError') return 'missing';
+    return 'unavailable';
   }
 }

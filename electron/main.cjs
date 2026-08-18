@@ -128,8 +128,16 @@ function isTrustedUrl(rawUrl) {
   }
 }
 
+// Una página cargada con loadFile tiene un origen opaco. Chromium lo serializa como
+// "file:///" o "null" según la API, así que esos valores no identifican a nadie y la
+// confianza se resuelve con la URL real del documento.
+function isOpaqueOrigin(origin) {
+  return !origin || origin === 'null' || /^file:\/{2,3}$/.test(origin);
+}
+
 function isTrustedRequest(origin, pageUrl) {
-  return isTrustedUrl(origin) || (origin === 'file://' && isTrustedUrl(pageUrl));
+  if (isOpaqueOrigin(origin)) return isTrustedUrl(pageUrl);
+  return isTrustedUrl(origin);
 }
 
 function assertTrustedSender(event) {
@@ -242,11 +250,13 @@ function configureCapturePermissions() {
   const currentSession = session.defaultSession;
 
   currentSession.setPermissionCheckHandler((webContents, permission, requestingOrigin, details) => {
-    const pageUrl = webContents?.getURL() ?? details.requestingUrl ?? '';
+    const pageUrl = webContents?.getURL() || details.requestingUrl || '';
     if (!isTrustedRequest(requestingOrigin, pageUrl)) return false;
     if (permission === 'display-capture') return true;
     if (permission !== 'media') return false;
-    return details.mediaType === 'audio';
+    // La consulta previa a enumerateDevices y a getUserMedia llega sin tipo declarado.
+    // Rechazarla oculta los nombres de los micrófonos y marca el permiso como denegado.
+    return details.mediaType === 'audio' || !details.mediaType || details.mediaType === 'unknown';
   });
 
   currentSession.setPermissionRequestHandler((webContents, permission, callback, details) => {
@@ -261,10 +271,16 @@ function configureCapturePermissions() {
       return;
     }
 
+    if (permission !== 'media') {
+      callback(false);
+      return;
+    }
+
+    // getDisplayMedia pide el permiso "media" sin tipos declarados. La superficie real
+    // la sigue eligiendo setDisplayMediaRequestHandler, que solo entrega el monitor
+    // principal. Una lista con tipos concretos solo se acepta si pide audio.
     const requestedMedia = details.mediaTypes || [];
-    callback(permission === 'media'
-      && requestedMedia.length > 0
-      && requestedMedia.every(type => type === 'audio'));
+    callback(requestedMedia.length === 0 || requestedMedia.every(type => type === 'audio'));
   });
 
   currentSession.setDisplayMediaRequestHandler(async (request, callback) => {
